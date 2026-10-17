@@ -1,0 +1,11 @@
+{
+  "name": "@conai/auth",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "ConAI authentication contracts: cookie names, session shapes, CSRF constants (implementation in Phase 2)",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

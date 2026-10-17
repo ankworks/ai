@@ -1,0 +1,12 @@
+{
+  "name": "@conai/storage",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "ConAI storage contracts: B2 bucket scopes, upload limits, file metadata (adapter in Phase 4)",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {}
+}

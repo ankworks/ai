@@ -1,0 +1,157 @@
+# ConAI — Security
+
+Threat model and controls for ConAI. Security is enforced **in backend code**; prompts are
+never a security boundary. This document is updated as phases land — see [`PROGRESS.md`](./PROGRESS.md).
+
+## 1. Assets & adversaries
+
+| Asset                       | Why it matters                     |
+| --------------------------- | ---------------------------------- |
+| Provider API keys (Ollama…) | Platform-wide abuse, cost, quota   |
+| Session cookies             | Full account takeover              |
+| Sparks wallets/ledger       | Economic integrity of the platform |
+| User files (B2)             | PII, verification docs, team IP    |
+| Admin sessions + MFA seeds  | Platform takeover                  |
+| OAuth client secrets        | Identity provider takeover         |
+
+Adversaries: anonymous internet, authenticated malicious users, compromised user devices,
+malicious team members, supply-chain (deps), and insider admin misuse (mitigated by audit logs).
+
+## 2. Authentication controls
+
+- **Library:** better-auth (D1 adapter) — established, Workers-compatible (Phase 2 verifies
+  the password-hashing path on `workerd`; fallback is WebCrypto PBKDF2-SHA256 ≥ 600k
+  iterations with per-user salt, documented here if used).
+- **Email/password:** min length enforced server-side (≥ 10), breach/weak-password checks,
+  email verification required before privileged actions, password reset with single-use,
+  short-TIME-to-live tokens delivered only via email (never in responses/logs).
+- **OAuth (Google/Microsoft/GitHub/OIDC):** `state` + PKCE (`S256`) validated server-side;
+  redirect URIs allowlisted per provider; tokens stored encrypted-at-rest (Worker env key) or
+  never persisted when only identity is needed.
+- **Account linking:** explicit flow initiated by a signed-in user, provider email must be
+  verified **and** ownership proven by the provider — matching email alone never links or
+  merges accounts.
+- **Sessions:** `HttpOnly; Secure; SameSite=Lax`, server-side rotation on privilege change,
+  idle + absolute expiry, revocation ("sign out this device"), per-device inventory.
+  Admin sessions use a **separate cookie** (`conai_admin_session` vs `conai_session`) and are
+  rejected on user-plane routes (and vice versa).
+- **Admin MFA:** TOTP (RFC 6238), enforced before any admin route; recovery codes shown once,
+  stored hashed; trusted devices (hashed device key, 30-day expiry) can skip MFA only from the
+  same device fingerprint class; MFA seed never logged.
+- **Emergency Lockdown:** KV flag `admin:lockdown` → all admin sessions rejected except Owner
+  authenticated with recovery code. Recovery runbook: §7.
+
+## 3. Request integrity (CSRF & origins)
+
+- All non-GET API requests require **both** a strict `Origin`/`Referer` match against the
+  configured app origins **and** a double-submit CSRF token (readable cookie ↔ `X-CSRF-Token`
+  header, random ≥ 128-bit, rotated on session change).
+- `POST /api/v1/auth/*` additionally verifies **Turnstile** tokens server-side
+  (`siteverify`), with hostname check against the deployed host.
+- CORS is explicit (allowlist); credentials only from allowlisted origins; no `*` with
+  credentials.
+
+## 4. Authorization
+
+- Every route declares its policy: `public | authenticated | admin(role/permission) | team(role)`.
+- **Server-side checks only** — UI hiding is cosmetic. Team permissions come from
+  `packages/permissions` (pure, unit-tested); admin permissions likewise. Row-level scoping is
+  mandatory in queries (`WHERE user_id = ?` / via membership join).
+- Only Owner can grant Owner; permission escalation attempts write audit events.
+
+## 5. Sparks & economic integrity
+
+- Balances are **never** read from client payloads; mutations reload the wallet row in a D1
+  transaction with optimistic `version` CAS.
+- Append-only ledger; every mutation ties to `request_id` (UNIQUE) for idempotent replays.
+- Reserve → settle → refund lifecycle guarantees over-holds are returned and failures release
+  the full hold. Budget checks happen **before** provider calls.
+- Admin adjustments require a reason and are ledgered (`admin_adjust`), actor audited.
+
+## 6. Rate limiting & anti-abuse
+
+- KV sliding-window counters keyed by `route + ip-prefix + identifier` (e.g. email hash) with
+  exponential backoff; sensible defaults (auth attempts, send-email, AI requests, upload).
+- **No permanent block on IP alone** — IP signals raise friction (Turnstile, delays), never
+  lifetime bans; shared NAT (schools) must not be bricked.
+- Device-registration limit is best-effort: salted, periodically rotated fingerprint hint +
+  email verification; documented to users as heuristic, privacy-conscious (no canvas/WebGL
+  cross-site tracking, raw fingerprints never stored).
+- Output side: per-user AI concurrency cap; automation execution rate limits; push quota caps.
+
+## 7. Secrets & key management
+
+- **No secret ever reaches frontend code** — only `VITE_*` public config at build time.
+- Provider keys/OAuth secrets/VAPID/B2 keys live in Worker environment variables
+  (`wrangler secret`), injected at runtime; `.dev.vars` is git-ignored with a committed
+  `.dev.vars.example` containing placeholders only.
+- Admin UI shows key **metadata only** (last4, provider, createdAt) — full values are
+  write-only (set/replace), never readable.
+- Log redaction: structured logger strips/masks `password|token|secret|authorization|
+cookie|api[-_]?key` before serialization (§9).
+
+**Recovery runbook (lost/compromised Owner):** 1) Owner uses printed recovery codes → MFA
+reset; 2) if codes lost: signed Git commit + registrar access to the domain proves control —
+support verifies domain control (DNS TXT challenge) then rotates session signing key
+(`SESSION_SECRET`) invalidating all sessions, then re-grants Owner (fully audited). If
+lockdown stuck: same DNS challenge path sets `admin:lockdown=0` via a one-time CLI script
+that requires a freshly rotated session secret.
+
+## 8. Data protection
+
+- **Transport:** HTTPS only, HSTS on deployed domains, `Secure` cookies.
+- **At rest:** B2 private buckets; verification docs in an isolated bucket with
+  reviewer-scoped access only (download URLs short-TTL, presigned via Worker after authz);
+  KV/D1 rely on Cloudflare's at-rest encryption — no additional PII in KV beyond hashed
+  identifiers where possible.
+- **Browser hardening headers** (set by API/asset Worker): `Content-Security-Policy`
+  (no inline scripts in prod; `frame-ancestors 'none'` except OAuth embeds), `X-Content-Type-
+Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`,
+  `Permissions-Policy` minimal, `X-Frame-Options: DENY` (status page may allow same-origin).
+- **PII minimization:** logs carry ids, not emails where avoidable; emails hashed in
+  rate-limit keys; audit rows redact free-text content.
+
+## 9. Logging & audit
+
+- Admin audit: actor, action, target, result, ip-prefix, request id, timestamp — 90 days.
+- Team activity: 30 days. Both cleaned by scheduled cron.
+- **Never logged:** passwords, password hashes, API keys, session/CSRF tokens, OAuth codes/
+  tokens, MFA seeds, presigned URL signatures. Enforced by redaction helper + lint rule list
+  in `packages/shared` (`redact()`), covered by unit tests.
+
+## 10. Input validation & injection
+
+- Every external input validated with `zod` at route boundaries (body, query, params, headers
+  where relevant).
+- All SQL is parameterized (D1 `bind`); no string-concatenated SQL (lint-restricted).
+- File uploads: magic-byte sniffing + extension allowlist + size/page limits checked
+  **before** persisting; images re-encoded on preview path where feasible; PDFs page-count
+  capped at 50 (configurable); storage filenames are random UUIDs (no user-controlled paths).
+- Markdown rendering on client: sanitizer configured (no raw HTML by default in AI output).
+
+## 11. Supply chain
+
+- Pinned versions in lockfile; `npm audit --omit=dev` in CI (Phase 8); minimal dependency
+  surface in the Worker (Workers runtime ≠ Node); Renovate-style updates reviewed manually.
+
+## 12. Free-tier specific risks
+
+- Turnstile free plan: fine for launch. KV free (1k writes/day) constrains rate-limit
+  counter granularity → coarse buckets, documented in FREE_TIER doc.
+- Workers free 100k req/day: status probes every 5 min ≈ 288/day (trivial), AI streaming is
+  the dominant cost — per-user concurrency caps protect the budget.
+
+## 13. Verification status
+
+| Control                        | Status                                         |
+| ------------------------------ | ---------------------------------------------- |
+| CSRF + origin middleware       | PLANNED (Phase 2)                              |
+| Turnstile server-side verify   | PLANNED (Phase 2)                              |
+| better-auth hashing on workerd | BLOCKED → Phase 2 verification task            |
+| Rate limiting (KV)             | PLANNED (Phase 2)                              |
+| Redaction helper + tests       | PLANNED (Phase 2)                              |
+| Security headers middleware    | IN PROGRESS (baseline shipped in API skeleton) |
+| Admin MFA / lockdown           | PLANNED (Phase 6)                              |
+| Pen-test / E2E security suite  | PLANNED (Phase 8)                              |
+
+_No production deployment occurs without explicit authorization._

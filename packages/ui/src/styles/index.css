@@ -1,0 +1,8 @@
+/*
+ * Single stylesheet entry for ConAI apps.
+ * App CSS does:
+ *   @import "tailwindcss";
+ *   @import "@conai/ui/styles";   (or a relative path into packages/ui)
+ */
+@import './tokens.css';
+@import './base.css';

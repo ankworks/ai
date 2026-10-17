@@ -1,0 +1,34 @@
+// ConAI API Worker configuration.
+// Local dev:  npm run dev:api   (wrangler dev → http://localhost:8787)
+// Secrets:    apps/api/.dev.vars (local) / `wrangler secret put …` (remote) — never committed.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "conai-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  // NOTE: no nodejs_compat flag — the API must not depend on Node.js APIs (spec §2).
+  "vars": {
+    "ROUTING_MODE": "path",
+    "ENVIRONMENT": "development",
+    "APP_VERSION": "0.1.0",
+    "ALLOWED_ORIGINS": "http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5177",
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "conai",
+      // Replace with the real id from `wrangler d1 create conai` before remote deploys.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "../../packages/database/migrations",
+    },
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "CACHE",
+      // Replace with the real id from `wrangler kv namespace create CACHE` before remote deploys.
+      "id": "00000000000000000000000000000000",
+    },
+  ],
+  "observability": { "enabled": true },
+  "dev": { "port": 8787 },
+}
