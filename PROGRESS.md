@@ -5,11 +5,13 @@ Rules: a feature may only be `IMPLEMENTED` when it actually works end-to-end;
 `TESTED` requires meaningful automated tests; `BLOCKED` must name the blocker
 (credential, DNS, free-tier, phase dependency).
 
-_Last updated: 2026-10-17 (Phase 1)_
+_Last updated: 2026-10-17 (Phase 1 shipped — commit `114496b`; Phase 2 in progress)_
 
 ---
 
-## PHASE 1 — Foundation
+## PHASE 1 — Foundation — ✅ SHIPPED (commit `114496b`, pushed)
+
+Gates at ship: lint 0 · typecheck 0 · 70/70 tests · build 0.
 
 | Feature                                                                      | Status      | Notes                                                                                                                     |
 | ---------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------- |
@@ -36,23 +38,30 @@ _Last updated: 2026-10-17 (Phase 1)_
 | README / ARCHITECTURE / PRODUCT_SPEC / SECURITY / DEPLOYMENT                 | IMPLEMENTED | this file included                                                                                                        |
 | CI pipeline                                                                  | PLANNED     | Phase 8 (gates documented, no CI config yet)                                                                              |
 
-## PHASE 2 — Database, Auth, Authorization, Account
+## PHASE 2 — Database, Auth, Authorization, Account — IN PROGRESS
 
-| Feature                                                | Status                                                                  |
-| ------------------------------------------------------ | ----------------------------------------------------------------------- |
-| better-auth integration (D1 adapter) + session cookies | PLANNED                                                                 |
-| Password hashing verification on workerd               | BLOCKED (needs Phase 2 runtime test)                                    |
-| Email/password + verification + reset                  | PLANNED                                                                 |
-| OAuth: Google / Microsoft / GitHub / OIDC (state+PKCE) | PLANNED (BLOCKED on client credentials — `docs/MISSING_CREDENTIALS.md`) |
-| Account linking (explicit, no email auto-merge)        | PLANNED                                                                 |
-| Turnstile server-side verification                     | PLANNED (BLOCKED on site keys)                                          |
-| KV rate limiting + backoff                             | PLANNED                                                                 |
-| CSRF double-submit + origin checks                     | PLANNED                                                                 |
-| Username system + Account Setup flow                   | PLANNED                                                                 |
-| Device/session management UI                           | PLANNED                                                                 |
-| Account platform sections (functional)                 | PLANNED                                                                 |
-| Admin session separation scaffolding                   | PLANNED                                                                 |
-| Migration 0002 (auth tables)                           | PLANNED                                                                 |
+| Feature                                           | Status                                                                                                                                                                                 |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| better-auth 1.7.10 (native D1 binding) + sessions | IMPLEMENTED — `packages/auth`, cookie `conai.session_token`, 30-day idle window, mounted at `/api/auth/*`                                                                              |
+| Password hashing on workerd                       | TESTED — e2e: sign-up → 161-char scrypt digest in `account.password` → sign-in verifies (needs `nodejs_compat`, declared)                                                              |
+| Email/password + verification + reset             | TESTED — e2e: sign-up → dev-log verify link → verified → sign-in; reset link → 302 → account reset page → new password                                                                 |
+| Migration 0002 (auth tables)                      | TESTED — GENERATED from the real config (`compileMigrations`), applied locally; 4 tables + indexes                                                                                     |
+| Username system (@username)                       | TESTED — plugin validation, dup rejection (`USERNAME_IS_ALREADY_TAKEN`), invalid chars, availability endpoint                                                                          |
+| Account bootstrap hook (profile + wallet)         | TESTED — sign-up creates `user_profiles` + `spark_wallets` rows (hook e2e + self-heal on `/api/v1/me`)                                                                                 |
+| `/api/v1/me` + PATCH (identity, wallet, plan)     | TESTED — e2e incl. self-heal, locale/display-name updates, `nextRefillAt` = next 00:00 UTC                                                                                             |
+| CSRF double-submit + origin checks                | TESTED — layered (better-auth built-ins + own token on `/api/v1/*`); 403 chains + evil-origin 403 e2e + unit                                                                           |
+| KV rate limiting                                  | TESTED — unit (window/expiry/write-amplification guard) + live 429 `Retry-After` (sign-in 10/300s per IP prefix)                                                                       |
+| Redaction helper                                  | TESTED — Phase 1 unit tests; access/error logs redact query strings                                                                                                                    |
+| OAuth (Google/Microsoft/GitHub/OIDC SSO)          | IMPLEMENTED — conditional wiring + `GET /api/v1/auth/providers`; live login BLOCKED on client credentials (MISSING_CREDENTIALS #9/#10)                                                 |
+| Account linking (explicit, no email auto-merge)   | IMPLEMENTED — Connected page (list/link/unlink) + routes; live OAuth blocked on credentials                                                                                            |
+| Turnstile on auth forms                           | IMPLEMENTED — server plugin + `x-captcha-response` + widget when `VITE_TURNSTILE_SITE_KEY` set; BLOCKED on real keys for production                                                    |
+| Password reset UI                                 | IMPLEMENTED — account `/reset-password` page (token via 302 callback)                                                                                                                  |
+| Username system + Account Setup flow              | IMPLEMENTED — sign-up collects @username; `/setup` (display name + locale → workspace CTA)                                                                                             |
+| Device/session management UI                      | IMPLEMENTED — sessions list (current flag via session id), revoke; privacy note (no permanent IP bans)                                                                                 |
+| Account platform sections (functional)            | IMPLEMENTED — Overview, Profile, Security, Devices, Connected, Plans, Sparks live-read real data; referrals/storage/memory/notifications/verification still Phase-planned placeholders |
+| Sign-in/Sign-up UI (EN/VI, Turnstile-ready)       | IMPLEMENTED — `apps/account` auth pages + i18n; browser-level E2E not yet automated (API e2e + Vite module smoke pass)                                                                 |
+| Admin session separation scaffolding              | PLANNED (Phase 6 — user instance uses prefix `conai`; admin instance planned with `conai_admin`)                                                                                       |
+| Admin roles/MFA, student review, referrals engine | PLANNED (Phases 5–6)                                                                                                                                                                   |
 
 ## PHASE 3 — AI Gateway, Sparks, Chat
 

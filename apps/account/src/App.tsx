@@ -1,5 +1,17 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { SettingsShell } from './components/SettingsShell';
+import { RequireAuth } from './components/RequireAuth';
+import { SignInPage } from './pages/auth/SignIn';
+import { SignUpPage } from './pages/auth/SignUp';
+import { SetupPage } from './pages/auth/Setup';
+import { ResetPasswordPage } from './pages/auth/Reset';
+import { OverviewPage } from './pages/Overview';
+import { ProfilePage } from './pages/Profile';
+import { SecurityPage } from './pages/Security';
+import { DevicesPage } from './pages/Devices';
+import { ConnectedPage } from './pages/Connected';
+import { PlansPage } from './pages/Plans';
+import { SparksPage } from './pages/Sparks';
 import { Preferences } from './pages/Preferences';
 import { Placeholder } from './pages/Placeholder';
 import { useI18n } from '@conai/ui';
@@ -19,21 +31,30 @@ export default function App() {
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Routes>
-        <Route element={<SettingsShell />}>
-          <Route path="/" element={<P titleKey="acc.overview" phase={2} />} />
-          <Route path="/profile" element={<P titleKey="acc.profile" phase={2} />} />
-          <Route path="/security" element={<P titleKey="acc.security" phase={2} />} />
-          <Route path="/devices" element={<P titleKey="acc.devices" phase={2} />} />
-          <Route path="/connected" element={<P titleKey="acc.connected" phase={2} />} />
-          <Route path="/plans" element={<P titleKey="acc.plans" phase={2} />} />
-          <Route path="/sparks" element={<P titleKey="acc.sparks" phase={3} />} />
-          <Route path="/referrals" element={<P titleKey="acc.referrals" phase={6} />} />
-          <Route path="/storage" element={<P titleKey="acc.storage" phase={4} />} />
-          <Route path="/memory" element={<P titleKey="acc.memory" phase={4} />} />
-          <Route path="/preferences" element={<Preferences />} />
-          <Route path="/notifications" element={<P titleKey="acc.notifications" phase={7} />} />
-          <Route path="/verification" element={<P titleKey="acc.verification" phase={6} />} />
-          <Route path="*" element={<P titleKey="acc.overview" phase={2} />} />
+        {/* Public auth flow */}
+        <Route path="/signin" element={<SignInPage />} />
+        <Route path="/signup" element={<SignUpPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+        {/* Signed-in account */}
+        <Route element={<RequireAuth />}>
+          <Route path="/setup" element={<SetupPage />} />
+          <Route element={<SettingsShell />}>
+            <Route path="/" element={<OverviewPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/security" element={<SecurityPage />} />
+            <Route path="/devices" element={<DevicesPage />} />
+            <Route path="/connected" element={<ConnectedPage />} />
+            <Route path="/plans" element={<PlansPage />} />
+            <Route path="/sparks" element={<SparksPage />} />
+            <Route path="/referrals" element={<P titleKey="acc.referrals" phase={6} />} />
+            <Route path="/storage" element={<P titleKey="acc.storage" phase={4} />} />
+            <Route path="/memory" element={<P titleKey="acc.memory" phase={4} />} />
+            <Route path="/preferences" element={<Preferences />} />
+            <Route path="/notifications" element={<P titleKey="acc.notifications" phase={7} />} />
+            <Route path="/verification" element={<P titleKey="acc.verification" phase={6} />} />
+            <Route path="*" element={<OverviewPage />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>

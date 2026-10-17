@@ -19,9 +19,12 @@ malicious team members, supply-chain (deps), and insider admin misuse (mitigated
 
 ## 2. Authentication controls
 
-- **Library:** better-auth (D1 adapter) — established, Workers-compatible (Phase 2 verifies
-  the password-hashing path on `workerd`; fallback is WebCrypto PBKDF2-SHA256 ≥ 600k
-  iterations with per-user salt, documented here if used).
+- **Library:** better-auth **1.7.10 with its native D1 binding** (`database: env.DB` — built-in
+  D1 dialect, batch-based writes). Password hashing is scrypt via `@better-auth/utils`; on
+  Workers the `workerd` export condition resolves to `node:crypto` scrypt and requires the
+  **`nodejs_compat` compatibility flag** (declared in `apps/api/wrangler.jsonc`). **Verified on
+  workerd:** sign-up hashes (161-char scrypt digest) and sign-in verifies end-to-end in the
+  local Workers runtime; the PBKDF2 fallback is NOT needed.
 - **Email/password:** min length enforced server-side (≥ 10), breach/weak-password checks,
   email verification required before privileged actions, password reset with single-use,
   short-TIME-to-live tokens delivered only via email (never in responses/logs).
@@ -33,8 +36,10 @@ malicious team members, supply-chain (deps), and insider admin misuse (mitigated
   merges accounts.
 - **Sessions:** `HttpOnly; Secure; SameSite=Lax`, server-side rotation on privilege change,
   idle + absolute expiry, revocation ("sign out this device"), per-device inventory.
-  Admin sessions use a **separate cookie** (`conai_admin_session` vs `conai_session`) and are
-  rejected on user-plane routes (and vice versa).
+  Cookie names: `conai.session_token` (HttpOnly user sessions, prefix `conai` — never
+  readable by JS) alongside the non-HttpOnly double-submit `conai_csrf`. Admin sessions (Phase 6)
+  run a **separate better-auth instance** with prefix `conai_admin` → `conai_admin.session_token`,
+  so an admin cookie cannot authenticate user-plane routes (and vice versa).
 - **Admin MFA:** TOTP (RFC 6238), enforced before any admin route; recovery codes shown once,
   stored hashed; trusted devices (hashed device key, 30-day expiry) can skip MFA only from the
   same device fingerprint class; MFA seed never logged.
@@ -46,8 +51,10 @@ malicious team members, supply-chain (deps), and insider admin misuse (mitigated
 - All non-GET API requests require **both** a strict `Origin`/`Referer` match against the
   configured app origins **and** a double-submit CSRF token (readable cookie ↔ `X-CSRF-Token`
   header, random ≥ 128-bit, rotated on session change).
-- `POST /api/v1/auth/*` additionally verifies **Turnstile** tokens server-side
-  (`siteverify`), with hostname check against the deployed host.
+- better-auth endpoints (`POST /api/auth/sign-up|sign-in|forgot-password`) additionally verify
+  **Turnstile** server-side via the built-in captcha plugin (`x-captcha-response` header →
+  Cloudflare `siteverify`, secret never leaves the Worker), active only when
+  `TURNSTILE_SECRET_KEY` is set.
 - CORS is explicit (allowlist); credentials only from allowlisted origins; no `*` with
   credentials.
 
@@ -143,15 +150,15 @@ Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`,
 
 ## 13. Verification status
 
-| Control                        | Status                                         |
-| ------------------------------ | ---------------------------------------------- |
-| CSRF + origin middleware       | PLANNED (Phase 2)                              |
-| Turnstile server-side verify   | PLANNED (Phase 2)                              |
-| better-auth hashing on workerd | BLOCKED → Phase 2 verification task            |
-| Rate limiting (KV)             | PLANNED (Phase 2)                              |
-| Redaction helper + tests       | PLANNED (Phase 2)                              |
-| Security headers middleware    | IN PROGRESS (baseline shipped in API skeleton) |
-| Admin MFA / lockdown           | PLANNED (Phase 6)                              |
-| Pen-test / E2E security suite  | PLANNED (Phase 8)                              |
+| Control                        | Status                                                                                          |
+| ------------------------------ | ----------------------------------------------------------------------------------------------- |
+| CSRF + origin middleware       | TESTED — layered: better-auth built-in Origin/Fetch-Metadata + own double-submit on `/api/v1/*` |
+| Turnstile server-side verify   | IMPLEMENTED — plugin gated on `TURNSTILE_SECRET_KEY` (site keys pending)                        |
+| better-auth hashing on workerd | TESTED — e2e sign-up/sign-in on workerd with `nodejs_compat` (scrypt)                           |
+| Rate limiting (KV)             | TESTED — fixed-window unit tests + live 429/`Retry-After` e2e (sign-in 10/300s)                 |
+| Redaction helper + tests       | TESTED — `redactString` unit tests (Phase 1)                                                    |
+| Security headers middleware    | TESTED — applied post-response so raw better-auth responses are covered                         |
+| Admin MFA / lockdown           | PLANNED (Phase 6)                                                                               |
+| Pen-test / E2E security suite  | PLANNED (Phase 8)                                                                               |
 
 _No production deployment occurs without explicit authorization._

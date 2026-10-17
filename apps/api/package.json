@@ -21,6 +21,7 @@
     "@conai/shared": "*",
     "@conai/sparks": "*",
     "@conai/storage": "*",
+    "better-auth": "^1.7.10",
     "hono": "^4.13.13",
     "zod": "^4.6.7"
   },

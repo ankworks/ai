@@ -57,6 +57,15 @@ export default defineConfig({
       {
         resolve: { alias: conaiAliases },
         test: {
+          name: 'auth',
+          root: './packages/auth',
+          environment: 'node',
+          include: ['src/**/*.test.ts'],
+        },
+      },
+      {
+        resolve: { alias: conaiAliases },
+        test: {
           name: 'api',
           root: './apps/api',
           environment: 'node',

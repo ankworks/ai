@@ -178,7 +178,7 @@ describe('security middleware', () => {
     );
     expect(res.status).toBe(403);
     const body = await readJson<ErrorBody>(res);
-    expect(body.error.code).toBe('origin_rejected');
+    expect(body.error.code).toBe('origin_not_allowed');
   });
 
   it('answers preflight for allowlisted origins', async () => {

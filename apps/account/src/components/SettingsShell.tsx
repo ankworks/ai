@@ -1,4 +1,4 @@
-import { NavLink, Outlet, Link } from 'react-router-dom';
+import { NavLink, Outlet, Link, useNavigate } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import {
   Bell,
@@ -11,6 +11,7 @@ import {
   MonitorSmartphone,
   MousePointerClick,
   ShieldCheck,
+  LogOut,
   Sparkles,
   UserRound,
   Users,
@@ -19,6 +20,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { Badge, Button, LanguageToggle, Logo, ThemeToggle, useI18n, type I18nKey } from '@conai/ui';
 import { publicEnv } from '../env';
+import { authClient } from '../lib/auth-client';
 
 interface Section {
   to: string;
@@ -28,13 +30,13 @@ interface Section {
 }
 
 const SECTIONS: Section[] = [
-  { to: '/', labelKey: 'acc.overview', icon: Gauge },
-  { to: '/profile', labelKey: 'acc.profile', icon: UserRound },
-  { to: '/security', labelKey: 'acc.security', icon: ShieldCheck },
-  { to: '/devices', labelKey: 'acc.devices', icon: MonitorSmartphone },
-  { to: '/connected', labelKey: 'acc.connected', icon: KeyRound },
-  { to: '/plans', labelKey: 'acc.plans', icon: CreditCard },
-  { to: '/sparks', labelKey: 'acc.sparks', icon: Sparkles },
+  { to: '/', labelKey: 'acc.overview', icon: Gauge, ready: true },
+  { to: '/profile', labelKey: 'acc.profile', icon: UserRound, ready: true },
+  { to: '/security', labelKey: 'acc.security', icon: ShieldCheck, ready: true },
+  { to: '/devices', labelKey: 'acc.devices', icon: MonitorSmartphone, ready: true },
+  { to: '/connected', labelKey: 'acc.connected', icon: KeyRound, ready: true },
+  { to: '/plans', labelKey: 'acc.plans', icon: CreditCard, ready: true },
+  { to: '/sparks', labelKey: 'acc.sparks', icon: Sparkles, ready: true },
   { to: '/referrals', labelKey: 'acc.referrals', icon: Users },
   { to: '/storage', labelKey: 'acc.storage', icon: Box },
   { to: '/memory', labelKey: 'acc.memory', icon: MousePointerClick },
@@ -65,6 +67,7 @@ function Layout({ children }: { children: ReactNode }) {
             </a>
           </nav>
           <div className="flex items-center gap-1.5">
+            <SessionChip />
             <LanguageToggle />
             <ThemeToggle />
           </div>
@@ -74,6 +77,33 @@ function Layout({ children }: { children: ReactNode }) {
       <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 md:flex-row md:px-6">
         {children}
       </div>
+    </div>
+  );
+}
+
+function SessionChip() {
+  const { t } = useI18n();
+  const navigate = useNavigate();
+  const { data } = authClient.useSession();
+
+  if (!data) return null;
+  const username = (data.user as { username?: string }).username;
+  const label = username ? `@${username}` : data.user.email;
+
+  async function signOut() {
+    await authClient.signOut();
+    navigate('/signin', { replace: true });
+  }
+
+  return (
+    <div className="hidden items-center gap-2 sm:flex">
+      <span className="text-muted-foreground max-w-36 truncate text-xs font-medium" title={label}>
+        {label}
+      </span>
+      <Button size="sm" variant="ghost" onClick={signOut} aria-label={t('common.signout')}>
+        <LogOut className="h-4 w-4" aria-hidden />
+        <span className="hidden md:inline">{t('common.signout')}</span>
+      </Button>
     </div>
   );
 }
@@ -110,9 +140,9 @@ export function SettingsShell() {
           ))}
         </nav>
         <div className="border-border bg-surface text-muted-foreground mt-4 hidden rounded-xl border p-4 text-xs leading-relaxed md:block">
-          Sign-in, billing-free plans, and account data arrive with{' '}
-          <span className="text-foreground font-medium">Phase 2</span>. Preferences below are
-          already fully functional on this device.
+          <span className="text-foreground font-medium">{t('acc.shell.liveTitle')}</span>
+          <br />
+          {t('acc.shell.liveNote')}
         </div>
       </aside>
 

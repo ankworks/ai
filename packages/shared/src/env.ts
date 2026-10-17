@@ -17,6 +17,11 @@ export const publicEnvSchema = z.object({
   VITE_STATUS_URL: z.string().default('/status'),
   /** Deployment mode marker for diagnostics. */
   VITE_CONAI_MODE: z.enum(['subdomain', 'path']).default('path'),
+  /**
+   * Cloudflare Turnstile SITE key (public by design) — renders bot-protection
+   * widgets on auth forms when set. Secret stays server-side (TURNSTILE_SECRET_KEY).
+   */
+  VITE_TURNSTILE_SITE_KEY: z.string().optional(),
 });
 
 export type PublicEnv = z.infer<typeof publicEnvSchema>;

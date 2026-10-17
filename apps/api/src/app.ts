@@ -1,9 +1,13 @@
 import { Hono } from 'hono';
 import { redactString } from '@conai/shared';
 import { parseEnv, type AppEnv, type Env } from './env';
+import { getAuth } from './auth';
 import { errorResponse, securityMiddleware } from './middleware/security';
+import { csrfMiddleware } from './middleware/csrf';
+import { rateLimitMiddleware } from './middleware/rate-limit';
 import { registerHealthRoutes } from './routes/health';
 import { registerStatusRoutes } from './routes/status';
+import { registerAccountRoutes } from './routes/me';
 
 /**
  * Builds the Hono app. The validated environment (zod) is supplied per request by
@@ -13,6 +17,8 @@ export function createApp(): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
   app.use('*', securityMiddleware);
+  app.use('*', csrfMiddleware);
+  app.use('*', rateLimitMiddleware);
 
   app.get('/', (c) =>
     c.json({
@@ -20,12 +26,21 @@ export function createApp(): Hono<AppEnv> {
       version: c.env.APP_VERSION,
       environment: c.env.ENVIRONMENT,
       routingMode: c.env.ROUTING_MODE,
-      endpoints: { health: '/api/v1/health', status: '/api/v1/status' },
+      endpoints: {
+        health: '/api/v1/health',
+        status: '/api/v1/status',
+        auth: '/api/auth/*',
+        me: '/api/v1/me',
+      },
     }),
   );
 
+  // better-auth — user-plane session (Phase 2). Admin instance mounts separately (Phase 6).
+  app.all('/api/auth/*', (c) => getAuth(c.env).handler(c.req.raw));
+
   registerHealthRoutes(app);
   registerStatusRoutes(app);
+  registerAccountRoutes(app);
 
   app.notFound((c) =>
     errorResponse(

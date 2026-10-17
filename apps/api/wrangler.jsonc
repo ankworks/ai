@@ -6,7 +6,9 @@
   "name": "conai-api",
   "main": "src/index.ts",
   "compatibility_date": "2026-10-01",
-  // NOTE: no nodejs_compat flag — the API must not depend on Node.js APIs (spec §2).
+  // nodejs_compat is REQUIRED by better-auth (AsyncLocalStorage via node:async_hooks and
+  // the scrypt password path via node:crypto). Declared explicitly — never assumed.
+  "compatibility_flags": ["nodejs_compat"],
   "vars": {
     "ROUTING_MODE": "path",
     "ENVIRONMENT": "development",

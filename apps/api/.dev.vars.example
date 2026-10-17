@@ -4,6 +4,25 @@
 # Phase 2 — sessions/CSRF signing (generate ≥32 random bytes: `openssl rand -hex 32`)
 SESSION_SECRET=
 
+# Phase 2 — public origin of this API (OAuth redirects, email links).
+# Dev default: http://localhost:8787 — required outside development.
+AUTH_BASE_URL=
+
+# Phase 2 — cookie Domain when using subdomain routing, e.g. .conai.dpdns.org
+COOKIE_DOMAIN=
+
+# Phase 2 — outbound email relay (REQUIRED in staging/production; development
+# prints verification/reset links to the Worker log instead of sending).
+# Any JSON POST endpoint (Resend-compatible): { from, to[], subject, html, text }
+EMAIL_API_URL=
+EMAIL_API_KEY=
+EMAIL_FROM=
+
+# Phase 2 — optional OpenID Connect SSO (discovered from OIDC_ISSUER)
+OIDC_ISSUER=
+OIDC_CLIENT_ID=
+OIDC_CLIENT_SECRET=
+
 # Phase 3 — AI provider (platform Owner-managed; never sent to browsers)
 OLLAMA_API_KEY=
 
