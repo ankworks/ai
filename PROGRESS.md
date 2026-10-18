@@ -5,7 +5,7 @@ Rules: a feature may only be `IMPLEMENTED` when it actually works end-to-end;
 `TESTED` requires meaningful automated tests; `BLOCKED` must name the blocker
 (credential, DNS, free-tier, phase dependency).
 
-_Last updated: 2026-10-18 (Phase 1 `114496b` + Phase 2 `5690249` + Phase 3 `eea72fa` shipped — all pushed)_
+_Last updated: 2026-10-18 (Phase 1 `114496b` + Phase 2 `5690249` + Phase 3 `eea72fa`/`b21b3a3` shipped; Phase 4 code complete, gates green, commit pending)_
 
 ---
 
@@ -77,19 +77,28 @@ Gates at ship: lint 0 · typecheck 0 · 70/70 tests · build 0.
 | AI Gateway error contract (401/402/429/409/503)         | TESTED — unauthenticated, insufficient_sparks 402 (reserve skipped), per-user KV chat limit 30/60 → 429+Retry-After, requestId replay 409, not_configured 503 without key                          |
 | First-day Sparks grant at sign-up                       | TESTED — new wallets credit `plan_configs.daily_sparks` (free-first; day-0 balance was 0 until tomorrow otherwise); refill TOP-UP semantics unchanged                                              |
 | AI Chat UI (workspace `/chat`)                          | IMPLEMENTED — model select (ConAI Auto), live balance, streaming bubbles, Stop, error banners, EN/VI; vite module smoke + full proxy SSE chain live                                                |
-| AI Chat (markdown/code/LaTeX, pin, search, export)      | PLANNED (Phase 4 — current renderer is honest plain text)                                                                                                                                          |
-| Conversation history                                    | PLANNED (Phase 4 — `0003_ai.sql` migrations land then)                                                                                                                                             |
+| AI Chat (markdown/code, export, save-to-memory)         | IMPLEMENTED (Phase 4 — dependency-free markdown renderer with fenced code + copy; LaTeX/tables not yet, chat stays honest where unsupported)                                                       |
+| Conversation history                                    | TESTED (Phase 4 — server persistence + list/search/pin/rename/delete route tests + History page)                                                                                                   |
 
-## PHASE 4 — Workspace tools, Library, Files, Memory
+## PHASE 4 — Workspace tools, Library, Files, Memory — ✅ CODE COMPLETE (gates green; commit pending)
 
-| Feature                                                             | Status                       |
-| ------------------------------------------------------------------- | ---------------------------- |
-| B2 storage adapter + private bucket flows                           | PLANNED (BLOCKED on B2 keys) |
-| Upload limits & quota enforcement (2 img / 2 doc / 50 pp, 10/20 MB) | PLANNED                      |
-| Personal Library + team files                                       | PLANNED                      |
-| Smart Memory (opt-in, approve-to-save)                              | PLANNED                      |
-| AI Study / Coding / Writing / Documents / Tools                     | PLANNED                      |
-| Prompt library (user)                                               | PLANNED                      |
+Gates: format 0 · lint 0 · typecheck 0 (now covers **all** packages + scripts) · **159/159 tests (19 files)** · build 0.
+
+| Feature                                                                                    | Status                                                                                                                                                                                                                                                         |
+| ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Migrations 0003 (conversations, messages, user_memories, prompt_library) + 0004 (files)    | TESTED — applied to fresh local D1 (0001–0004 all ✅); test harness now applies **every** migration file dynamically                                                                                                                                           |
+| Dependency-free SigV4 signer (presign GET/PUT + signed headers)                            | TESTED — 10/10 incl. both AWS published S3 vectors (`f0e8…` GET, `98ad…` PUT) matched byte-for-byte                                                                                                                                                            |
+| B2 storage adapter + presign/confirm/download/delete routes                                | TESTED — route tests cover 503 `not_configured` (no keys), presign URL signing, HEAD confirm → stored, signed GET, signed DELETE → row dropped, stale-pending sweep; **live real-B2 upload BLOCKED on B2 keys** (honest `not_configured`, never a fake upload) |
+| Upload limits & byte quota (settings-driven 10/20 MB, plan byte quota)                     | TESTED — 413 `file_too_large`, 400 `unsupported_file` (extension allow-list), 400 `quota_exceeded` vs plan storage; limits served from `uploads.limits` setting                                                                                                |
+| Conversation history (persist after settlement, append, search, pin, rename, delete)       | TESTED — route tests (auto-create on first delivered turn, `done.conversationId`, 404 cross-user, LIKE-escaped search, explicit message delete) + live e2e list/title/tool/msgs                                                                                |
+| System-prompt governance (Core Safety → Tool → approved memories)                          | TESTED — injection tests: memory NOT present before approval, present after approve, absent when disabled; tool id → server-owned instructions; 20×600-char cap                                                                                                |
+| Smart Memory (opt-in, approve-to-save)                                                     | TESTED — model-sourced rows start `suggested`; manual rows `approved`; approve/reject/enable/disable/delete-all routes + account Memory page                                                                                                                   |
+| AI Study / Coding / Writing / Documents / Tools                                            | IMPLEMENTED — server instruction sets + Tools gallery (`?tool=` preset → chat → persisted on conversation); Chat/History badge shows active tool                                                                                                               |
+| Prompt library (user)                                                                      | TESTED — CRUD + cross-user 404 tests + workspace Library page (create/edit/copy/delete)                                                                                                                                                                        |
+| Chat upgrades: markdown renderer, thread resume, export, save-to-memory, image attachments | IMPLEMENTED — fenced code + copy, `?c=` thread open from History, .md export, save reply → suggested memory, image attach via presign→PUT→confirm→signed URL; vite module smoke + proxy chain                                                                  |
+| Account Storage page (upload/usage/download/delete)                                        | IMPLEMENTED — renders usage bar, upload flow (works when B2 configured), honest `not_configured` panel otherwise                                                                                                                                               |
+| PDF page-count (50 pp) + document-chat ingest                                              | PLANNED — DEFERRED: `files.page_count` column exists but page counting/ingest not wired; per-file 50-page rule NOT yet enforced (limit value is stored + served)                                                                                               |
+| Admin Global governance layer                                                              | PLANNED (Phase 6 — hierarchy Core → Tool → Prefs today, Admin Global slots above Tool then)                                                                                                                                                                    |
 
 ## PHASE 5 — Teams
 

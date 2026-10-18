@@ -1,24 +1,35 @@
 /**
  * Chat conversation state (zustand): message list, active stream, abort control.
- * Server events drive the UI through `send()`; wallet/me data stays in
- * react-query (refetched by the page after each run).
+ * Server events drive the UI through `send()`; the conversation id comes back
+ * on `done` (Phase 4 — history persisted server-side) and is sent along on
+ * subsequent turns. Wallet/me data stays in react-query.
  */
 
 import { create } from 'zustand';
-import { streamChat, type ChatMetaEvent } from '../lib/chat-sse';
+import { streamChat, type ChatContent, type ChatMetaEvent } from '../lib/chat-sse';
 import { ApiError } from '../lib/api';
 
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  /** Image attachments shown under a user bubble (also sent as image parts). */
+  images?: string[];
   /** Set when the stream ended with a server-side error event. */
   errorCode?: string;
+  /** requestId of the assistant turn (used for save-to-memory). */
+  requestId?: string;
 }
+
+export type ToolId = 'study' | 'coding' | 'writing' | 'documents' | 'tools';
 
 export interface ChatState {
   messages: ChatMessage[];
   model: string | undefined;
+  /** Active server-side thread (null until the first delivered turn). */
+  conversationId: string | null;
+  /** Active tool preset (from /chat?tool= or a History thread). */
+  tool: ToolId | undefined;
   isStreaming: boolean;
   /** Last run's server meta (model actually used, fallback flag, …). */
   lastMeta: ChatMetaEvent | null;
@@ -26,12 +37,52 @@ export interface ChatState {
   /** API-level failure (ApiError) from the last run, cleared on next send. */
   error: { status: number; code: string; message: string } | null;
   setModel: (model: string | undefined) => void;
+  setTool: (tool: ToolId | undefined) => void;
+  /** Fresh thread: empties messages and detaches from any conversation. */
   clear: () => void;
+  /** Open a stored thread (History): replace state with fetched messages. */
+  openConversation: (state: {
+    id: string;
+    messages: ChatMessage[];
+    tool?: ToolId | undefined;
+  }) => void;
   stop: () => void;
-  send: (text: string) => Promise<void>;
+  send: (text: string, imageUrls?: string[]) => Promise<void>;
 }
 
 const newId = () => crypto.randomUUID();
+
+/**
+ * Stored message content may be plain text OR the JSON of content parts
+ * (image attachments are persisted as `[{"type":...}]` by the API).
+ */
+export function parseStoredContent(raw: string): { text: string; images: string[] } {
+  if (raw.startsWith('[')) {
+    try {
+      const parts = JSON.parse(raw) as Array<{ type?: string; text?: string; imageUrl?: string }>;
+      const text = parts
+        .filter((p) => p.type === 'text')
+        .map((p) => p.text ?? '')
+        .join('\n')
+        .trim();
+      const images = parts
+        .filter((p) => p.type === 'image' && p.imageUrl)
+        .map((p) => p.imageUrl as string);
+      if (text || images.length > 0) return { text, images };
+    } catch {
+      /* fall through to raw */
+    }
+  }
+  return { text: raw, images: [] };
+}
+
+function toContent(message: ChatMessage): ChatContent {
+  if (!message.images || message.images.length === 0) return message.content;
+  return [
+    { type: 'text', text: message.content },
+    ...message.images.map((imageUrl) => ({ type: 'image' as const, imageUrl })),
+  ];
+}
 
 export const useChatStore = create<ChatState>((set, get) => {
   let controller: AbortController | null = null;
@@ -39,18 +90,36 @@ export const useChatStore = create<ChatState>((set, get) => {
   return {
     messages: [],
     model: undefined,
+    conversationId: null,
+    tool: undefined,
     isStreaming: false,
     lastMeta: null,
     lastUsage: null,
     error: null,
 
     setModel: (model) => set({ model }),
+    setTool: (tool) => set({ tool }),
 
     clear: () => {
       controller?.abort();
       controller = null;
       set({
         messages: [],
+        conversationId: null,
+        isStreaming: false,
+        lastMeta: null,
+        lastUsage: null,
+        error: null,
+      });
+    },
+
+    openConversation: ({ id, messages, tool }) => {
+      controller?.abort();
+      controller = null;
+      set({
+        messages,
+        conversationId: id,
+        ...(tool !== undefined ? { tool } : {}),
         isStreaming: false,
         lastMeta: null,
         lastUsage: null,
@@ -64,11 +133,17 @@ export const useChatStore = create<ChatState>((set, get) => {
       set({ isStreaming: false });
     },
 
-    send: async (text) => {
+    send: async (text, imageUrls) => {
       const trimmed = text.trim();
-      if (!trimmed || get().isStreaming) return;
+      const images = (imageUrls ?? []).filter(Boolean);
+      if ((!trimmed && images.length === 0) || get().isStreaming) return;
 
-      const userMsg: ChatMessage = { id: newId(), role: 'user', content: trimmed };
+      const userMsg: ChatMessage = {
+        id: newId(),
+        role: 'user',
+        content: trimmed || '',
+        ...(images.length > 0 ? { images: [...images] } : {}),
+      };
       const assistantId = newId();
       const history = [...get().messages, userMsg];
 
@@ -87,9 +162,12 @@ export const useChatStore = create<ChatState>((set, get) => {
         }));
 
       try {
+        const { model: activeModel, conversationId: activeConversation, tool: activeTool } = get();
         const payload = {
-          messages: history.map((m) => ({ role: m.role, content: m.content })),
-          ...(get().model ? { model: get().model } : {}),
+          messages: history.map((m) => ({ role: m.role, content: toContent(m) })),
+          ...(activeModel ? { model: activeModel } : {}),
+          ...(activeConversation ? { conversationId: activeConversation } : {}),
+          ...(activeTool ? { tool: activeTool } : {}),
         };
         for await (const ev of streamChat(payload, controller.signal)) {
           if (ev.event === 'meta') {
@@ -106,6 +184,12 @@ export const useChatStore = create<ChatState>((set, get) => {
                   : {}),
               },
             });
+          } else if (ev.event === 'done') {
+            const conversationId = ev.data.conversationId ?? null;
+            if (conversationId) set({ conversationId });
+            if (ev.data.requestId) {
+              patchAssistant((m) => ({ ...m, requestId: ev.data.requestId }));
+            }
           } else if (ev.event === 'error') {
             patchAssistant((m) => ({ ...m, errorCode: ev.data.code ?? 'stream_error' }));
           }

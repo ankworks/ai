@@ -9,6 +9,10 @@ import { registerHealthRoutes } from './routes/health';
 import { registerStatusRoutes } from './routes/status';
 import { registerAccountRoutes } from './routes/me';
 import { registerAiRoutes } from './routes/ai';
+import { registerConversationRoutes } from './routes/ai-conversations';
+import { registerMemoryRoutes } from './routes/memory';
+import { registerPromptRoutes } from './routes/prompts';
+import { registerFileRoutes } from './routes/files';
 
 /**
  * Builds the Hono app. The validated environment (zod) is supplied per request by
@@ -34,6 +38,10 @@ export function createApp(): Hono<AppEnv> {
         me: '/api/v1/me',
         models: '/api/v1/models',
         chat: 'POST /api/v1/ai/chat (SSE)',
+        conversations: '/api/v1/ai/conversations',
+        memory: '/api/v1/ai/memory',
+        prompts: '/api/v1/ai/prompts',
+        files: '/api/v1/files',
       },
     }),
   );
@@ -45,6 +53,10 @@ export function createApp(): Hono<AppEnv> {
   registerStatusRoutes(app);
   registerAccountRoutes(app);
   registerAiRoutes(app);
+  registerConversationRoutes(app);
+  registerMemoryRoutes(app);
+  registerPromptRoutes(app);
+  registerFileRoutes(app);
 
   app.notFound((c) =>
     errorResponse(

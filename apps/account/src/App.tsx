@@ -13,6 +13,8 @@ import { ConnectedPage } from './pages/Connected';
 import { PlansPage } from './pages/Plans';
 import { SparksPage } from './pages/Sparks';
 import { Preferences } from './pages/Preferences';
+import { MemoryPage } from './pages/Memory';
+import { StoragePage } from './pages/Storage';
 import { Placeholder } from './pages/Placeholder';
 import { useI18n } from '@conai/ui';
 
@@ -48,8 +50,8 @@ export default function App() {
             <Route path="/plans" element={<PlansPage />} />
             <Route path="/sparks" element={<SparksPage />} />
             <Route path="/referrals" element={<P titleKey="acc.referrals" phase={6} />} />
-            <Route path="/storage" element={<P titleKey="acc.storage" phase={4} />} />
-            <Route path="/memory" element={<P titleKey="acc.memory" phase={4} />} />
+            <Route path="/storage" element={<StoragePage />} />
+            <Route path="/memory" element={<MemoryPage />} />
             <Route path="/preferences" element={<Preferences />} />
             <Route path="/notifications" element={<P titleKey="acc.notifications" phase={7} />} />
             <Route path="/verification" element={<P titleKey="acc.verification" phase={6} />} />

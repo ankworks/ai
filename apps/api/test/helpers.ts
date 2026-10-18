@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { vi } from 'vitest';
 import { createApp } from '../src/app';
@@ -21,11 +21,13 @@ export const META = { duration: 0, changes: 0, last_row_id: 0, rows_read: 0, row
  */
 export function realDb(): { db: D1Database; sqlite: DatabaseSync } {
   const sqlite = new DatabaseSync(':memory:');
-  for (const file of ['0001_init.sql', '0002_auth.sql']) {
-    const sql = readFileSync(
-      new URL(`../../../packages/database/migrations/${file}`, import.meta.url),
-      'utf8',
-    );
+  // Apply EVERY migration in order (0001…000N) — never a hardcoded subset.
+  const migrationsDir = new URL('../../../packages/database/migrations/', import.meta.url);
+  const files = readdirSync(migrationsDir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort();
+  for (const file of files) {
+    const sql = readFileSync(new URL(file, migrationsDir), 'utf8');
     sqlite.exec(sql);
   }
 

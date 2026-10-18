@@ -6,6 +6,11 @@
  * Invariants: server-held provider key; per-user KV rate limit; Sparks hold is
  * taken BEFORE the provider is called and always finalized (settled/released)
  * exactly once — success, mid-stream failure, client abort, or pre-stream error.
+ *
+ * Phase 4: every delivered turn (incl. partials/errors) is persisted to
+ * `conversations`/`messages` AFTER settlement; the server builds the system
+ * prompt (core safety + tool + approved memories) — clients pick ids, never
+ * prompt text.
  */
 
 import type { Hono } from 'hono';
@@ -19,6 +24,7 @@ import {
   routeRequest,
   usageFromEmittedText,
   usageFromProvider,
+  validateImageUrl,
   type AIModelDescriptor,
   type ChatMessage,
   type ProviderAdapter,
@@ -38,6 +44,13 @@ import { errorResponse, queueHeader } from '../middleware/security';
 import { aiConfigured, getProviderAdapter } from '../ai-provider';
 import { requireSession } from './me';
 import { releaseSparks, reserveSparks, settleSparks } from '../services/wallet';
+import {
+  assembleSystemPrompt,
+  isToolId,
+  loadApprovedMemories,
+  loadUploadLimits,
+  type ToolId,
+} from '../ai/system-prompt';
 
 /** First provider chunk must arrive within this window (pre-stream HTTP errors). */
 const FIRST_TOKEN_TIMEOUT_MS = 20_000;
@@ -48,7 +61,6 @@ const CHAT_RATE = { bucket: 'ai-chat', max: 30, windowSec: 60 };
 
 const MAX_MESSAGES = 64;
 const MAX_TEXT_CHARS = 20_000;
-const MAX_IMAGES_PER_MESSAGE = 6;
 
 const partSchema = z
   .object({
@@ -65,21 +77,40 @@ const contentSchema = z.union([
   z.array(partSchema).min(1).max(16),
 ]);
 
-const chatBodySchema = z.object({
-  messages: z
-    .array(
-      z.object({
-        role: z.enum(['system', 'user', 'assistant']),
-        content: contentSchema,
-      }),
-    )
-    .min(1)
-    .max(MAX_MESSAGES),
-  model: z.string().min(1).max(100).optional(),
-  requestId: z.string().max(64).optional(),
-  maxTokens: z.number().int().min(1).max(4096).optional(),
-  temperature: z.number().min(0).max(2).optional(),
-});
+const chatBodySchema = z
+  .object({
+    messages: z
+      .array(
+        z.object({
+          role: z.enum(['system', 'user', 'assistant']),
+          content: contentSchema,
+        }),
+      )
+      .min(1)
+      .max(MAX_MESSAGES),
+    model: z.string().min(1).max(100).optional(),
+    requestId: z.string().max(64).optional(),
+    maxTokens: z.number().int().min(1).max(4096).optional(),
+    temperature: z.number().min(0).max(2).optional(),
+    /** Existing thread to append to (created lazily by this route when absent). */
+    conversationId: z.string().max(64).optional(),
+    /** Workspace tool preset — mapped server-side to instructions, never free text. */
+    tool: z.enum(['study', 'coding', 'writing', 'documents', 'tools']).optional(),
+  })
+  .superRefine((value, ctx) => {
+    // Hard payload cap: text + image refs (data: URLs) across the whole request.
+    let total = 0;
+    for (const m of value.messages) {
+      if (typeof m.content === 'string') {
+        total += m.content.length;
+        continue;
+      }
+      for (const p of m.content) total += (p.text?.length ?? 0) + (p.imageUrl?.length ?? 0);
+    }
+    if (total > 14_500_000) {
+      ctx.addIssue({ code: 'custom', message: 'Request payload too large' });
+    }
+  });
 
 type ChatBody = z.infer<typeof chatBodySchema>;
 
@@ -203,15 +234,16 @@ function messagesToText(messages: ChatMessage[]): string {
     .join('\n');
 }
 
-function validateImages(messages: ChatMessage[]): void {
+function validateImages(messages: ChatMessage[], maxImages: number): void {
   for (const m of messages) {
     if (Array.isArray(m.content)) {
       const images = m.content.filter((p) => p.type === 'image');
-      if (images.length > MAX_IMAGES_PER_MESSAGE) {
-        throw new GatewayError(
-          'invalid_request',
-          `At most ${MAX_IMAGES_PER_MESSAGE} images per message`,
-        );
+      if (images.length > maxImages) {
+        throw new GatewayError('invalid_request', `At most ${maxImages} images per message`);
+      }
+      // Host policy BEFORE reserving Sparks (SSRF guard; the adapter re-checks).
+      for (const image of images) {
+        if (image.imageUrl) validateImageUrl(image.imageUrl);
       }
     }
   }
@@ -277,19 +309,22 @@ export function registerAiRoutes(app: Hono<AppEnv>): void {
     }
     const body: ChatBody = parsed.data;
     const messages = body.messages as ChatMessage[];
+    // Text is capped tightly; image refs are capped by zod (14.5 MB combined)
+    // and by upload limits below.
     const totalChars = messages.reduce(
       (sum, m) =>
         sum +
         (typeof m.content === 'string'
           ? m.content.length
-          : m.content.reduce((s, p) => s + (p.text?.length ?? 0) + (p.imageUrl?.length ?? 0), 0)),
+          : m.content.reduce((t, p) => t + (p.text?.length ?? 0), 0)),
       0,
     );
     if (totalChars > 100_000) {
       return errorResponse('invalid_request', 'Request too large', 400, c.get('requestId'));
     }
+    const uploadLimits = await loadUploadLimits(db);
     try {
-      validateImages(messages);
+      validateImages(messages, uploadLimits.maxImagesPerMessage);
     } catch (error) {
       const g = toGatewayError(error);
       if (g.code === 'invalid_request') {
@@ -316,10 +351,42 @@ export function registerAiRoutes(app: Hono<AppEnv>): void {
       );
     }
 
+    // ── Conversation + governance prompt (Phase 4) ─────────────────────────
+    let conversation: { id: string; tool: string | null; model: string | null } | null = null;
+    if (body.conversationId) {
+      if (!isValidRequestId(body.conversationId)) {
+        return errorResponse(
+          'invalid_request',
+          'conversationId must be a UUID',
+          400,
+          c.get('requestId'),
+        );
+      }
+      conversation = await db
+        .prepare('SELECT id, tool, model FROM conversations WHERE id = ? AND user_id = ?')
+        .bind(body.conversationId, session.user.id)
+        .first();
+      if (!conversation) {
+        return errorResponse('not_found', 'Conversation not found', 404, c.get('requestId'));
+      }
+    }
+    const tool: ToolId | undefined =
+      body.tool ?? (isToolId(conversation?.tool) ? conversation.tool : undefined);
+    const memories = await loadApprovedMemories(db, session.user.id);
+    const systemPrompt = assembleSystemPrompt({ tool, memories });
+    const providerMessages: ChatMessage[] = [
+      { role: 'system', content: systemPrompt },
+      ...messages.slice(-40), // bounded context window per request
+    ];
+
     const registry = await loadRegistry(db);
     let decision: RoutingDecision;
     try {
-      decision = routeRequest({ requestedModel: body.model, messages, registry });
+      decision = routeRequest({
+        requestedModel: body.model ?? conversation?.model ?? undefined,
+        messages: providerMessages,
+        registry,
+      });
     } catch (error) {
       if (error instanceof GatewayError) {
         return errorResponse(error.code, error.message, error.status, c.get('requestId'));
@@ -329,7 +396,7 @@ export function registerAiRoutes(app: Hono<AppEnv>): void {
 
     const pricing = await loadPricing(db);
     const estimate = estimateRequestSparks({
-      messages,
+      messages: providerMessages,
       pricing,
       multiplier: decision.pricingMultiplier,
       expectedOutputTokens: body.maxTokens,
@@ -371,7 +438,7 @@ export function registerAiRoutes(app: Hono<AppEnv>): void {
     const deadline = setTimeout(() => ctrl.abort(timeoutMark), MAX_STREAM_MS);
 
     const adapter = getProviderAdapter(c.env);
-    const inputText = messagesToText(messages);
+    const inputText = messagesToText(providerMessages);
 
     let opened: OpenedStream;
     try {
@@ -382,7 +449,7 @@ export function registerAiRoutes(app: Hono<AppEnv>): void {
             requestId,
             userId: session.user.id,
             model: decision.modelId,
-            messages,
+            messages: providerMessages,
             options: { temperature: body.temperature, maxTokens: body.maxTokens },
           },
           userId: session.user.id,
@@ -448,6 +515,94 @@ export function registerAiRoutes(app: Hono<AppEnv>): void {
       });
     };
 
+    // ── History persistence (exactly once per turn, after settlement) ──────
+    type SettledResult = Awaited<ReturnType<typeof finalize>>;
+    let conversationId: string | null = conversation?.id ?? null;
+    let turnPersisted = false;
+
+    const persistTurn = async (opts: {
+      settled: SettledResult;
+      finishReason: string;
+      errorCode: string | null;
+    }): Promise<string | null> => {
+      if (turnPersisted) return conversationId;
+      turnPersisted = true;
+      if (!emittedText && !opts.errorCode) return conversationId; // nothing delivered
+      try {
+        const now = new Date().toISOString();
+        const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
+        const userText =
+          typeof lastUserMsg?.content === 'string'
+            ? lastUserMsg.content
+            : JSON.stringify(lastUserMsg?.content ?? '');
+        if (!conversationId) {
+          const created = await db
+            .prepare(
+              `INSERT INTO conversations (id, user_id, title, tool, model, pinned, message_count,
+                                          last_message_at, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, 0, 0, NULL, ?, ?) RETURNING id`,
+            )
+            .bind(
+              crypto.randomUUID(),
+              userId,
+              userText.trim().slice(0, 60) || 'New conversation',
+              tool ?? null,
+              decision.mode === 'manual' ? decision.modelId : null,
+              now,
+              now,
+            )
+            .first<{ id: string }>();
+          conversationId = created?.id ?? null;
+          if (!conversationId) return null;
+        }
+        await db
+          .prepare(
+            `INSERT INTO messages (id, conversation_id, user_id, role, content, model,
+                                   input_tokens, output_tokens, sparks, finish_reason,
+                                   error_code, request_id, created_at)
+             VALUES (?, ?, ?, 'user', ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, ?)`,
+          )
+          .bind(crypto.randomUUID(), conversationId, userId, userText, now)
+          .run();
+        const usage = providerUsage
+          ? usageFromProvider(providerUsage.input, providerUsage.output)
+          : usageFromEmittedText(inputText, emittedText);
+        const charged = opts.settled && 'charged' in opts.settled ? opts.settled.charged : null;
+        await db
+          .prepare(
+            `INSERT INTO messages (id, conversation_id, user_id, role, content, model,
+                                   input_tokens, output_tokens, sparks, finish_reason,
+                                   error_code, request_id, created_at)
+             VALUES (?, ?, ?, 'assistant', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          )
+          .bind(
+            crypto.randomUUID(),
+            conversationId,
+            userId,
+            emittedText,
+            opened.modelUsed,
+            usage.inputTokens,
+            usage.outputTokens,
+            charged,
+            opts.finishReason,
+            opts.errorCode,
+            requestId,
+            now,
+          )
+          .run();
+        await db
+          .prepare(
+            'UPDATE conversations SET message_count = message_count + 2, last_message_at = ?, updated_at = ? WHERE id = ?',
+          )
+          .bind(now, now, conversationId)
+          .run();
+      } catch (error) {
+        // History is best-effort: never break an answered stream over persistence.
+        console.warn('[ai] turn persistence failed:', (error as Error).message);
+      }
+      return conversationId;
+    };
+
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
         const send = (event: string, data: unknown) => {
@@ -493,13 +648,18 @@ export function registerAiRoutes(app: Hono<AppEnv>): void {
             const usage = providerUsage
               ? usageFromProvider(providerUsage.input, providerUsage.output)
               : usageFromEmittedText(inputText, emittedText);
+            const persistedConversationId = await persistTurn({
+              settled,
+              finishReason,
+              errorCode: null,
+            });
             send('usage', {
               inputTokens: usage.inputTokens,
               outputTokens: usage.outputTokens,
               sparks: settled && 'charged' in settled ? settled.charged : estimate.sparks,
               balanceAfter: settled && 'balanceAfter' in settled ? settled.balanceAfter : null,
             });
-            send('done', { finishReason, requestId });
+            send('done', { finishReason, requestId, conversationId: persistedConversationId });
             try {
               controller.close();
             } catch {
@@ -507,8 +667,13 @@ export function registerAiRoutes(app: Hono<AppEnv>): void {
             }
           } catch (error) {
             if (isAbortLike(error) && ctrl.signal.reason !== timeoutMark) {
-              // Client went away — settle the partial usage quietly.
-              await finalize('settle');
+              // Client went away — settle + persist the partial turn quietly.
+              const settledAborted = await finalize('settle');
+              await persistTurn({
+                settled: settledAborted,
+                finishReason: 'cancelled',
+                errorCode: null,
+              });
               try {
                 controller.close();
               } catch {
@@ -517,10 +682,20 @@ export function registerAiRoutes(app: Hono<AppEnv>): void {
               return;
             }
             finishReason = 'error';
-            await finalize('settle');
+            const settledError = await finalize('settle');
             const g = toGatewayError(error);
+            const persistedError = await persistTurn({
+              settled: settledError,
+              finishReason: 'error',
+              errorCode: g.code,
+            });
             const usage = usageFromEmittedText(inputText, emittedText);
-            send('error', { code: g.code, message: g.message, retryable: g.retryable });
+            send('error', {
+              code: g.code,
+              message: g.message,
+              retryable: g.retryable,
+              conversationId: persistedError,
+            });
             send('usage', { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens });
             try {
               controller.close();
@@ -535,11 +710,17 @@ export function registerAiRoutes(app: Hono<AppEnv>): void {
         void pump();
       },
       cancel() {
-        // Client cancelled the stream — settle partial usage once.
-        void finalize('settle').finally(() => {
+        // Reader detached — settle + persist the partial turn once.
+        void (async () => {
+          const settledCancelled = await finalize('settle');
+          await persistTurn({
+            settled: settledCancelled,
+            finishReason: 'cancelled',
+            errorCode: null,
+          });
           clearTimeout(deadline);
           c.req.raw.signal.removeEventListener('abort', onClientAbort);
-        });
+        })();
       },
     });
 

@@ -89,6 +89,7 @@ npx wrangler secret put OLLAMA_API_KEY
 #   wrangler.jsonc [vars] OLLAMA_BASE_URL = "https://ollama.com/api"
 npx wrangler secret put B2_APP_KEY_ID
 npx wrangler secret put B2_APP_KEY
+npx wrangler secret put B2_BUCKET_REGION   # e.g. us-west-002 (B2 S3 endpoint region)
 npx wrangler secret put GOOGLE_CLIENT_SECRET
 # … per apps/api/.dev.vars.example (each has a comment: which phase needs it)
 ```
@@ -146,6 +147,15 @@ Workers → Versions → deploy previous version (or `wrangler rollback`).
 
 Scheduled Worker (daily 00:00 UTC): Sparks top-up audit, retention cleanup (30/90 days),
 status probes every 5 min (separate schedule). Configured in `wrangler.jsonc` `triggers`.
+
+## 10b. Backblaze B2 buckets (once, before enabling uploads)
+
+Create the private buckets named in `packages/storage` (`BUCKETS`): `conai-personal`,
+`conai-teams`, `conai-verification`, `conai-temp`, `conai-public` — then generate an
+**application key restricted to those buckets** and set the three `B2_*` secrets above.
+Local dev: put them in `apps/api/.dev.vars` (gitignored). Without them the API keeps running
+and file routes answer `503 not_configured` (the account Storage page shows the same honest
+state). Object endpoint used by the signer: `https://s3.<region>.backblazeb2.com/<bucket>/<key>`.
 
 ## 11. Free-tier notes
 

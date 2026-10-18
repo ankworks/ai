@@ -9,7 +9,8 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "generate:migration": "node scripts/generate-migration.ts"
+    "generate:migration": "node scripts/generate-migration.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "better-auth": "^1.7.10"

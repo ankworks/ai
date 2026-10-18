@@ -58,7 +58,7 @@ if (typeof mr.compileMigrations === 'function') {
 } else {
   console.error('No SQL statements found in migration result. Keys:', Object.keys(mr));
   console.error('toBeCreated:', JSON.stringify(mr.toBeCreated, null, 2).slice(0, 2000));
-  process.exit(1);
+  throw new Error('migration generation produced no SQL');
 }
 
 if (mr.schemaProblems && mr.schemaProblems.length > 0) {

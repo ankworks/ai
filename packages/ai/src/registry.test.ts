@@ -6,7 +6,7 @@ import type { AIModelDescriptor } from './index';
 const m = (over: Partial<AIModelDescriptor> & { id: string }): AIModelDescriptor => ({
   provider: 'ollama_cloud',
   displayName: over.id,
-  capabilities: ['chat'],
+  capabilities: ['streaming'],
   pricingMultiplier: 1,
   enabled: true,
   fallbacks: [],

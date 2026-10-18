@@ -339,6 +339,14 @@ Opt-in. Model may _suggest_ memories; nothing is saved without explicit user app
 View/edit/delete/disable/delete-all in Account → AI Memory. Personal memories are scoped
 `user_id` and are never copied into team contexts.
 
+**Implemented (Phase 4):** rows carry `status suggested|approved|rejected` + `enabled`.
+Manual adds are `approved` immediately (the user explicitly typed them); Chat's save button
+creates `suggested` rows (`source=model`, `source_message_id` set) that never reach prompts
+until approved. The server assembles the system prompt per request:
+**Core Safety (hard-coded) → Tool instructions (by id) → approved+enabled memories**
+(cap 20 × 600 chars) — clients cannot inject governance text, only ids and their own message
+content. Route tests assert injection presence/absence across approve/disable transitions.
+
 ---
 
 ## 11. Storage (B2 via S3 API)
@@ -352,6 +360,21 @@ View/edit/delete/disable/delete-all in Account → AI Memory. Personal memories 
 - Per-message limits (configurable): **2 images, 2 documents, 50 PDF pages;
   10 MB image, 20 MB document** — enforced server-side before the B2 write.
 - Quota checks (personal 500 MB–1 GB, team 2 GB) run inside the upload transaction.
+
+**Implemented (Phase 4):** `packages/storage` ships a dependency-free WebCrypto **SigV4**
+signer (AWS official S3 vectors tested byte-for-byte) and the API exposes:
+`GET /api/v1/files/limits` (settings-driven limits + extension allow-list + storage-configured flag),
+`POST /api/v1/files/presign` (kind/size/plan-quota checks → `pending` row → 900 s presigned **PUT**),
+`GET /api/v1/files` (sweeps unconfirmed rows > 1 h — they never count against quota),
+`POST /api/v1/files/:id/confirm` (**server-signed HEAD** proves the object exists → `stored`,
+missing object → row dropped), `GET /api/v1/files/:id` (authz then a 600 s presigned **GET**),
+`DELETE /api/v1/files/:id` (server-signed **DELETE**, 404 tolerated, then metadata row).
+Object endpoint: `https://s3.<region>.backblazeb2.com/<bucket>/<key>` with bucket names from the
+`BUCKETS` map (`conai-personal` for personal files today; team scope lands with Phase 5).
+**Bytes never pass through the Worker** — presigned PUT/GET skip it entirely; the Worker only
+signs + authorizes. Missing `B2_*` env ⇒ every file route answers `503 not_configured`
+(honest degradation, never a fake upload). **Deferred:** PDF page counting (50-page rule) and
+document-chat ingest — the `page_count` column exists but is not wired yet.
 
 ---
 

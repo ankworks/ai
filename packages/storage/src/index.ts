@@ -1,3 +1,4 @@
+export * from './sigv4';
 /**
  * Storage contracts (Phase 1 types; B2 S3 adapter lands in Phase 4 — ARCHITECTURE.md §11).
  *

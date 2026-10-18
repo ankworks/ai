@@ -150,18 +150,38 @@ Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`,
 
 ## 13. Verification status
 
-| Control                        | Status                                                                                                                                                       |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| CSRF + origin middleware       | TESTED — layered: better-auth built-in Origin/Fetch-Metadata + own double-submit on `/api/v1/*`                                                              |
-| Turnstile server-side verify   | IMPLEMENTED — plugin gated on `TURNSTILE_SECRET_KEY` (site keys pending)                                                                                     |
-| better-auth hashing on workerd | TESTED — e2e sign-up/sign-in on workerd with `nodejs_compat` (scrypt)                                                                                        |
-| Rate limiting (KV)             | TESTED — fixed-window unit tests + live 429/`Retry-After` e2e (sign-in 10/300s)                                                                              |
-| AI provider key isolation      | TESTED — key exists only as a Workers secret/env; unit assert `Authorization: Bearer` appears only on the worker→provider hop; chat answers 503 without it   |
-| AI chat abuse controls         | TESTED — per-user KV bucket `ai-chat` 30/60s (keyed `u:<userId>`, never IP-only) → 429 + `Retry-After`; body size/message caps; `requestId` replay → 409     |
-| Sparks economic integrity      | TESTED — reserve BEFORE provider call (402 skips provider entirely); settle/release idempotent; live ledger shows reservation→settlement deltas balance-safe |
-| Redaction helper + tests       | TESTED — `redactString` unit tests (Phase 1)                                                                                                                 |
-| Security headers middleware    | TESTED — applied post-response so raw better-auth responses are covered                                                                                      |
-| Admin MFA / lockdown           | PLANNED (Phase 6)                                                                                                                                            |
-| Pen-test / E2E security suite  | PLANNED (Phase 8)                                                                                                                                            |
+| Control                        | Status                                                                                                                                                                                                                                      |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CSRF + origin middleware       | TESTED — layered: better-auth built-in Origin/Fetch-Metadata + own double-submit on `/api/v1/*`                                                                                                                                             |
+| Turnstile server-side verify   | IMPLEMENTED — plugin gated on `TURNSTILE_SECRET_KEY` (site keys pending)                                                                                                                                                                    |
+| better-auth hashing on workerd | TESTED — e2e sign-up/sign-in on workerd with `nodejs_compat` (scrypt)                                                                                                                                                                       |
+| Rate limiting (KV)             | TESTED — fixed-window unit tests + live 429/`Retry-After` e2e (sign-in 10/300s)                                                                                                                                                             |
+| AI provider key isolation      | TESTED — key exists only as a Workers secret/env; unit assert `Authorization: Bearer` appears only on the worker→provider hop; chat answers 503 without it                                                                                  |
+| AI chat abuse controls         | TESTED — per-user KV bucket `ai-chat` 30/60s (keyed `u:<userId>`, never IP-only) → 429 + `Retry-After`; body size/message caps; `requestId` replay → 409                                                                                    |
+| Sparks economic integrity      | TESTED — reserve BEFORE provider call (402 skips provider entirely); settle/release idempotent; live ledger shows reservation→settlement deltas balance-safe                                                                                |
+| Redaction helper + tests       | TESTED — `redactString` unit tests (Phase 1)                                                                                                                                                                                                |
+| Security headers middleware    | TESTED — applied post-response so raw better-auth responses are covered                                                                                                                                                                     |
+| Admin MFA / lockdown           | PLANNED (Phase 6)                                                                                                                                                                                                                           |
+| Image URL SSRF guard           | TESTED — chat image parts accept only inline `data:image/(png\|jpe?g\|webp\|gif);base64` or `https://*.backblazeb2.com`; enforced in the route **before** the Sparks reserve (400, zero ledger rows) and re-checked in the provider adapter |
+| File upload controls           | TESTED — extension allow-list (`unsupported_file` 400), settings-driven 10/20 MB caps (413), plan byte quota (`quota_exceeded` 400), `pending` row only counts as storage after server-signed HEAD confirm                                  |
+| Presigned URL exposure         | TESTED — presigned GET/PUT only, TTL 600/900 s, signed for the exact key; private buckets; B2 credentials exist only as Workers env (never echoed, never browser-side)                                                                      |
+| Pen-test / E2E security suite  | PLANNED (Phase 8)                                                                                                                                                                                                                           |
+
+## 14. File uploads & object storage (Phase 4)
+
+- **Never through the browser directly to credentials:** clients receive only short-lived
+  presigned URLs; `B2_APP_KEY_ID` / `B2_APP_KEY` stay server-side env (Workers secrets).
+- **Allow-list, not block-list:** extensions come from `IMAGE_EXTENSIONS` / `DOCUMENT_EXTENSIONS`
+  in `@conai/storage` (png/jpg/jpeg/webp/gif + pdf/txt/md/doc/docx/csv); unknown types are 400.
+- **Quota before signing:** size cap (per kind, from the `uploads.limits` setting) and the plan's
+  personal byte quota are checked before any `pending` row or URL exists.
+- **Existence proof:** `status` only becomes `stored` after the Worker itself performs a signed
+  `HEAD` on B2 — clients cannot fake a completed upload; abandoned `pending` rows are swept after
+  1 h and never count toward quota.
+- **Download authz:** the signed GET URL is issued by ConAI only after session + owner checks.
+- **No SSRF:** chat image parts are fetched by the adapter **only** from `data:` URLs or
+  `*.backblazeb2.com` (see §13) — a foreign URL is rejected before any network call.
+- Honest degradation: without B2 keys the file routes return `503 not_configured`; the UI shows
+  the same fact instead of a working-looking upload.
 
 _No production deployment occurs without explicit authorization._

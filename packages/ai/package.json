@@ -10,5 +10,8 @@
   },
   "dependencies": {
     "@conai/sparks": "*"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
   }
 }

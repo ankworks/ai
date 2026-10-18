@@ -27,12 +27,22 @@ export type ChatServerEvent =
         balanceAfter?: number | null;
       };
     }
-  | { event: 'done'; data: { finishReason?: string; requestId?: string } }
+  | {
+      event: 'done';
+      data: { finishReason?: string; requestId?: string; conversationId?: string | null };
+    }
   | { event: 'error'; data: { code?: string; message?: string; retryable?: boolean } };
 
+export type ChatContent =
+  string | Array<{ type: 'text'; text: string } | { type: 'image'; imageUrl: string }>;
+
 export interface ChatRequestPayload {
-  messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
+  messages: Array<{ role: 'user' | 'assistant' | 'system'; content: ChatContent }>;
   model?: string;
+  /** Existing thread (server creates one on the first delivered turn). */
+  conversationId?: string;
+  /** Workspace tool preset — mapped server-side to instructions. */
+  tool?: 'study' | 'coding' | 'writing' | 'documents' | 'tools';
 }
 
 function readCookie(name: string): string | null {
