@@ -5,7 +5,7 @@ Rules: a feature may only be `IMPLEMENTED` when it actually works end-to-end;
 `TESTED` requires meaningful automated tests; `BLOCKED` must name the blocker
 (credential, DNS, free-tier, phase dependency).
 
-_Last updated: 2026-10-18 (Phase 1 `114496b` + Phase 2 `5690249` + Phase 3 `eea72fa`/`b21b3a3` shipped; Phase 4 code complete, gates green, commit pending)_
+_Last updated: 2026-10-18 (Phase 1 `114496b` + Phase 2 `5690249` + Phase 3 `eea72fa`/`b21b3a3` + Phase 4 `3571c36` shipped — all pushed)_
 
 ---
 
@@ -80,7 +80,7 @@ Gates at ship: lint 0 · typecheck 0 · 70/70 tests · build 0.
 | AI Chat (markdown/code, export, save-to-memory)         | IMPLEMENTED (Phase 4 — dependency-free markdown renderer with fenced code + copy; LaTeX/tables not yet, chat stays honest where unsupported)                                                       |
 | Conversation history                                    | TESTED (Phase 4 — server persistence + list/search/pin/rename/delete route tests + History page)                                                                                                   |
 
-## PHASE 4 — Workspace tools, Library, Files, Memory — ✅ CODE COMPLETE (gates green; commit pending)
+## PHASE 4 — Workspace tools, Library, Files, Memory — ✅ SHIPPED (commit `3571c36`, pushed)
 
 Gates: format 0 · lint 0 · typecheck 0 (now covers **all** packages + scripts) · **159/159 tests (19 files)** · build 0.
 
