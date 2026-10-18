@@ -40,6 +40,15 @@ npm run dev            # all apps; or dev:web / dev:api individually
 API: `http://localhost:8787` (Hono via `wrangler dev` — real workerd runtime).
 Frontends: Vite dev servers on 5173–5177 with proxy of `/api` → 8787 in path mode.
 
+AI provider in local dev (Phase 3):
+
+- Set `OLLAMA_API_KEY` + `OLLAMA_BASE_URL` in `apps/api/.dev.vars` for the real Ollama Cloud
+  (`https://ollama.com/api` is the default when the base URL is omitted).
+- No key? Use the bundled mock provider — same NDJSON wire format, zero cost:
+  `node scripts/mock-ollama.mjs 11434` then point `OLLAMA_BASE_URL=http://127.0.0.1:11434/api`
+  (this is what the live Phase 3 e2e used; it is dev-only code).
+- Without any key the chat route answers `503 not_configured` — never a fake stream.
+
 Database migrations (local):
 
 ```bash
@@ -76,6 +85,8 @@ npx wrangler d1 migrations apply conai --remote
 ```bash
 npx wrangler secret put SESSION_SECRET
 npx wrangler secret put OLLAMA_API_KEY
+# optional non-secret config (defaults to https://ollama.com/api):
+#   wrangler.jsonc [vars] OLLAMA_BASE_URL = "https://ollama.com/api"
 npx wrangler secret put B2_APP_KEY_ID
 npx wrangler secret put B2_APP_KEY
 npx wrangler secret put GOOGLE_CLIENT_SECRET

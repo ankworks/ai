@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { AppShell } from './components/AppShell';
 import { Home } from './pages/Home';
+import { Chat } from './pages/Chat';
 import { PhasePage } from './pages/PhasePage';
 
 export default function App() {
@@ -9,7 +10,7 @@ export default function App() {
       <Routes>
         <Route element={<AppShell />}>
           <Route path="/" element={<Home />} />
-          <Route path="/chat" element={<PhasePage titleKey="ws.chat" phase={3} />} />
+          <Route path="/chat" element={<Chat />} />
           <Route path="/study" element={<PhasePage titleKey="ws.study" phase={4} />} />
           <Route path="/coding" element={<PhasePage titleKey="ws.coding" phase={4} />} />
           <Route path="/writing" element={<PhasePage titleKey="ws.writing" phase={4} />} />

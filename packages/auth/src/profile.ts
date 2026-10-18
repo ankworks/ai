@@ -78,9 +78,12 @@ export async function createAccountShell(
         db
           .prepare(
             `INSERT INTO spark_wallets (user_id, balance, last_refill_at, version, created_at, updated_at)
-             VALUES (?, 0, ?, 0, ?, ?)`,
+             SELECT ?, COALESCE((SELECT daily_sparks FROM plan_configs WHERE id = 'personal'), 500), ?, 0, ?, ?
+             -- First-day grant: the free plan's daily allowance is credited up front
+             -- (spec §7 free-first); daily refills afterwards are TOP-UP max(current, limit).
+             WHERE NOT EXISTS (SELECT 1 FROM spark_wallets WHERE user_id = ?)`,
           )
-          .bind(id, now, now, now),
+          .bind(id, now, now, now, id),
       ]);
       const failed = results.find((r: unknown) => {
         const res = r as ProfileInsertResult & { error?: unknown };
@@ -104,12 +107,14 @@ export async function createAccountShell(
 }
 
 async function ensureWallet(db: D1Database, userId: string, now: string): Promise<void> {
+  // Same first-day grant as createAccountShell; INSERT OR IGNORE keeps it idempotent.
   await db
     .prepare(
       `INSERT OR IGNORE INTO spark_wallets (user_id, balance, last_refill_at, version, created_at, updated_at)
-       VALUES (?, 0, ?, 0, ?, ?)`,
+       SELECT ?, COALESCE((SELECT daily_sparks FROM plan_configs WHERE id = 'personal'), 500), ?, 0, ?, ?
+       WHERE NOT EXISTS (SELECT 1 FROM spark_wallets WHERE user_id = ?)`,
     )
-    .bind(userId, now, now, now)
+    .bind(userId, now, now, now, userId)
     .run();
 }
 

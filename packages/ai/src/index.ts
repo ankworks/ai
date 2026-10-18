@@ -9,7 +9,7 @@
 
 export type ProviderId = 'ollama_cloud' | (string & {});
 
-export type ModelCapability = 'streaming' | 'vision' | 'tools' | 'search' | 'reasoning';
+export type ModelCapability = 'streaming' | 'vision' | 'tools' | 'search' | 'reasoning' | 'code';
 
 export interface AIModelDescriptor {
   /** Stable model id used by clients, e.g. 'llama3.3:70b'. */
@@ -64,6 +64,8 @@ export type GatewayErrorCode =
   | 'network'
   | 'policy_blocked'
   | 'budget_exceeded'
+  | 'insufficient_sparks'
+  | 'not_configured'
   | 'invalid_request';
 
 export interface ProviderAdapter {
@@ -93,3 +95,11 @@ export interface ModelRegistrySnapshot {
   models: AIModelDescriptor[];
   fetchedAt: string;
 }
+
+// ── Phase 3 implementations (registry, routing, estimation, adapters) ────────
+export * from './errors';
+export * from './registry';
+export * from './router';
+export * from './estimate';
+export * from './ndjson';
+export * from './providers/ollama';

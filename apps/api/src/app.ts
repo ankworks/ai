@@ -8,6 +8,7 @@ import { rateLimitMiddleware } from './middleware/rate-limit';
 import { registerHealthRoutes } from './routes/health';
 import { registerStatusRoutes } from './routes/status';
 import { registerAccountRoutes } from './routes/me';
+import { registerAiRoutes } from './routes/ai';
 
 /**
  * Builds the Hono app. The validated environment (zod) is supplied per request by
@@ -31,6 +32,8 @@ export function createApp(): Hono<AppEnv> {
         status: '/api/v1/status',
         auth: '/api/auth/*',
         me: '/api/v1/me',
+        models: '/api/v1/models',
+        chat: 'POST /api/v1/ai/chat (SSE)',
       },
     }),
   );
@@ -41,6 +44,7 @@ export function createApp(): Hono<AppEnv> {
   registerHealthRoutes(app);
   registerStatusRoutes(app);
   registerAccountRoutes(app);
+  registerAiRoutes(app);
 
   app.notFound((c) =>
     errorResponse(

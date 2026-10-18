@@ -311,13 +311,15 @@ request → authz → budget check (Sparks estimate) → reserve
         → usage record → settle Sparks → ledger
 ```
 
-- **Adapter interface** (`packages/ai`): `stream()`, `cancel()`, `capabilities()`,
-  `models()`. Providers implement the interface; Ollama Cloud is first; others are config-only
-  additions. Multi-provider credentials are centrally held in Worker env (encrypted by
-  Cloudflare), referenced by name — **never shipped to the browser**. Multiple credentials
-  exist for rotation/HA, never for quota evasion.
-- **Model registry** in D1 (admin-managed): model id, provider, capabilities (vision/tools),
-  pricing multiplier, enabled, fallback order. KV-cached with short TTL.
+- **Adapter interface** (`packages/ai`, Phase 3 shipped): `stream(request, signal)` (cancellation
+  travels on the AbortSignal), `listModels()`, `health()`. Providers implement the interface;
+  Ollama is first, others are config-only additions. Credentials are held in Worker env only
+  (Workers secrets; `.dev.vars` locally) — **never shipped to the browser**. Multiple
+  credentials exist for rotation/HA, never for quota evasion.
+- **Model registry**: validated catalog from code defaults (`DEFAULT_MODELS`) overridable by
+  the admin-managed `ai.registry` `platform_setting` (JSON array of descriptors: id, provider,
+  capabilities, pricing multiplier, enabled, fallback order, autoRank). A dedicated `ai_models`
+  table + KV cache lands with migration `0003_ai.sql` (Phase 4/6) when admin CRUD ships.
 - **ConAI Auto** routing: user intent + capability needs + admin policy → cheapest capable
   model; manual selection overrides.
 - **Errors:** classified (auth / rate-limit / model / network). Controlled fallback follows

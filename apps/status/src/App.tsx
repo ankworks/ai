@@ -38,7 +38,8 @@ const STATE_META: Record<
 };
 
 async function fetchStatus(): Promise<StatusPageResponse> {
-  const res = await fetch(`${publicEnv.VITE_API_BASE_URL}/status`, {
+  // VITE_API_BASE_URL already includes `/api`; the route lives under `/v1`.
+  const res = await fetch(`${publicEnv.VITE_API_BASE_URL}/v1/status`, {
     headers: { Accept: 'application/json' },
   });
   if (!res.ok) throw new Error(`Status API returned ${res.status}`);

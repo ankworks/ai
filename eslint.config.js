@@ -47,4 +47,10 @@ export default tseslint.config(
     rules: { 'no-console': 'off' },
     languageOptions: { globals: { ...globals.node } },
   },
+  {
+    // Dev-only helper scripts (mock provider, codemods …) run under plain Node.
+    files: ['scripts/**/*.{mjs,js,cjs}'],
+    rules: { 'no-console': 'off' },
+    languageOptions: { globals: { ...globals.node }, sourceType: 'module' },
+  },
 );

@@ -24,6 +24,8 @@ export const envSchema = z.object({
   // Secrets (see .dev.vars.example — Phase annotations there)
   SESSION_SECRET: z.string().min(16).optional(),
   OLLAMA_API_KEY: z.string().min(1).optional(),
+  /** Provider base URL incl. /api suffix. Default: https://ollama.com/api */
+  OLLAMA_BASE_URL: z.string().url().optional(),
   TURNSTILE_SECRET_KEY: z.string().min(1).optional(),
   B2_APP_KEY_ID: z.string().min(1).optional(),
   B2_APP_KEY: z.string().min(1).optional(),

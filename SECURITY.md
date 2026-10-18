@@ -150,15 +150,18 @@ Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`,
 
 ## 13. Verification status
 
-| Control                        | Status                                                                                          |
-| ------------------------------ | ----------------------------------------------------------------------------------------------- |
-| CSRF + origin middleware       | TESTED — layered: better-auth built-in Origin/Fetch-Metadata + own double-submit on `/api/v1/*` |
-| Turnstile server-side verify   | IMPLEMENTED — plugin gated on `TURNSTILE_SECRET_KEY` (site keys pending)                        |
-| better-auth hashing on workerd | TESTED — e2e sign-up/sign-in on workerd with `nodejs_compat` (scrypt)                           |
-| Rate limiting (KV)             | TESTED — fixed-window unit tests + live 429/`Retry-After` e2e (sign-in 10/300s)                 |
-| Redaction helper + tests       | TESTED — `redactString` unit tests (Phase 1)                                                    |
-| Security headers middleware    | TESTED — applied post-response so raw better-auth responses are covered                         |
-| Admin MFA / lockdown           | PLANNED (Phase 6)                                                                               |
-| Pen-test / E2E security suite  | PLANNED (Phase 8)                                                                               |
+| Control                        | Status                                                                                                                                                       |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| CSRF + origin middleware       | TESTED — layered: better-auth built-in Origin/Fetch-Metadata + own double-submit on `/api/v1/*`                                                              |
+| Turnstile server-side verify   | IMPLEMENTED — plugin gated on `TURNSTILE_SECRET_KEY` (site keys pending)                                                                                     |
+| better-auth hashing on workerd | TESTED — e2e sign-up/sign-in on workerd with `nodejs_compat` (scrypt)                                                                                        |
+| Rate limiting (KV)             | TESTED — fixed-window unit tests + live 429/`Retry-After` e2e (sign-in 10/300s)                                                                              |
+| AI provider key isolation      | TESTED — key exists only as a Workers secret/env; unit assert `Authorization: Bearer` appears only on the worker→provider hop; chat answers 503 without it   |
+| AI chat abuse controls         | TESTED — per-user KV bucket `ai-chat` 30/60s (keyed `u:<userId>`, never IP-only) → 429 + `Retry-After`; body size/message caps; `requestId` replay → 409     |
+| Sparks economic integrity      | TESTED — reserve BEFORE provider call (402 skips provider entirely); settle/release idempotent; live ledger shows reservation→settlement deltas balance-safe |
+| Redaction helper + tests       | TESTED — `redactString` unit tests (Phase 1)                                                                                                                 |
+| Security headers middleware    | TESTED — applied post-response so raw better-auth responses are covered                                                                                      |
+| Admin MFA / lockdown           | PLANNED (Phase 6)                                                                                                                                            |
+| Pen-test / E2E security suite  | PLANNED (Phase 8)                                                                                                                                            |
 
 _No production deployment occurs without explicit authorization._

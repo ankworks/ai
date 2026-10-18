@@ -17,7 +17,7 @@ import { enabledSocialProviders, getAuth } from '../auth';
 import { errorResponse } from '../middleware/security';
 
 /** Session required — returns typed session data or null (caller returns 401). */
-async function requireSession(c: Context<AppEnv>) {
+export async function requireSession(c: Context<AppEnv>) {
   const auth = getAuth(c.env);
   const data = await auth.api.getSession({ headers: c.req.raw.headers }).catch(() => null);
   return data;

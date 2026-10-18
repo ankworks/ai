@@ -5,7 +5,7 @@ Rules: a feature may only be `IMPLEMENTED` when it actually works end-to-end;
 `TESTED` requires meaningful automated tests; `BLOCKED` must name the blocker
 (credential, DNS, free-tier, phase dependency).
 
-_Last updated: 2026-10-17 (Phase 1 shipped — commit `114496b`; Phase 2 in progress)_
+_Last updated: 2026-10-18 (Phase 1 `114496b` + Phase 2 `5690249` shipped; Phase 3 committing this branch head)_
 
 ---
 
@@ -38,7 +38,7 @@ Gates at ship: lint 0 · typecheck 0 · 70/70 tests · build 0.
 | README / ARCHITECTURE / PRODUCT_SPEC / SECURITY / DEPLOYMENT                 | IMPLEMENTED | this file included                                                                                                        |
 | CI pipeline                                                                  | PLANNED     | Phase 8 (gates documented, no CI config yet)                                                                              |
 
-## PHASE 2 — Database, Auth, Authorization, Account — IN PROGRESS
+## PHASE 2 — Database, Auth, Authorization, Account — ✅ SHIPPED (commit `5690249`, pushed)
 
 | Feature                                           | Status                                                                                                                                                                                 |
 | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -65,16 +65,20 @@ Gates at ship: lint 0 · typecheck 0 · 70/70 tests · build 0.
 
 ## PHASE 3 — AI Gateway, Sparks, Chat
 
-| Feature                                                   | Status                                |
-| --------------------------------------------------------- | ------------------------------------- |
-| Provider adapter interface + Ollama Cloud adapter         | PLANNED (BLOCKED on `OLLAMA_API_KEY`) |
-| SSE streaming pipeline + cancel/regenerate                | PLANNED                               |
-| Model registry + capability detection + ConAI Auto router | PLANNED                               |
-| Admin-managed pricing/routing config                      | PLANNED                               |
-| Atomic wallet ops (reserve/settle/refund) on D1           | PLANNED (logic TESTED in Phase 1)     |
-| Usage accounting from token usage (100 tok = 1 Spark ref) | PLANNED (formula TESTED)              |
-| AI Chat (markdown/code/LaTeX, pin, search, export)        | PLANNED                               |
-| Conversation history                                      | PLANNED                               |
+| Feature                                                 | Status                                                                                                                                                                                             |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Provider adapter interface + Ollama adapter             | IMPLEMENTED — `@conai/ai` `ProviderAdapter`; Ollama NDJSON streaming; server-held key (`OLLAMA_API_KEY`, hop worker→provider only, never in a response)                                            |
+| SSE streaming pipeline (`POST /api/v1/ai/chat`)         | TESTED — unit (stubbed provider, 9 route tests) + LIVE e2e: meta → deltas → usage → done through wrangler :8787 and the workspace :5174 proxy; client Stop = AbortController (full partial settle) |
+| Model registry + ConAI Auto router                      | TESTED — `DEFAULT_MODELS` + `ai.registry` D1 override; vision/code/autoRank heuristics, unhealthy skip, ≤3 fallback chain (28 unit tests); real-cloud model availability verify-at-rollout flagged |
+| Controlled fallback                                     | TESTED — retryable failure BEFORE first chunk walks the chain (live/404 case); mid-stream death settles emitted-text estimate (no mid-stream fallback, by design)                                  |
+| Admin-managed pricing/routing config                    | IMPLEMENTED (data) — `sparks.pricing` + `ai.registry` read from `platform_settings`; admin editing UI lands with Phase 6 admin                                                                     |
+| Atomic wallet ops on D1 (reserve→settle→refund/release) | TESTED — version-guarded sequential UPDATE…RETURNING, idempotent `settle:`/`release:` request ids, UNIQUE-race compensation; live ledger: reservation −7 → settlement +6 (charged 1)               |
+| Usage accounting (100 equiv tokens = 1 Spark)           | TESTED — settle from provider `prompt_eval_count`/`eval_count`, emitted-text fallback; live: 10+14 tokens → 1 Spark; estimate hold replaced at settlement                                          |
+| AI Gateway error contract (401/402/429/409/503)         | TESTED — unauthenticated, insufficient_sparks 402 (reserve skipped), per-user KV chat limit 30/60 → 429+Retry-After, requestId replay 409, not_configured 503 without key                          |
+| First-day Sparks grant at sign-up                       | TESTED — new wallets credit `plan_configs.daily_sparks` (free-first; day-0 balance was 0 until tomorrow otherwise); refill TOP-UP semantics unchanged                                              |
+| AI Chat UI (workspace `/chat`)                          | IMPLEMENTED — model select (ConAI Auto), live balance, streaming bubbles, Stop, error banners, EN/VI; vite module smoke + full proxy SSE chain live                                                |
+| AI Chat (markdown/code/LaTeX, pin, search, export)      | PLANNED (Phase 4 — current renderer is honest plain text)                                                                                                                                          |
+| Conversation history                                    | PLANNED (Phase 4 — `0003_ai.sql` migrations land then)                                                                                                                                             |
 
 ## PHASE 4 — Workspace tools, Library, Files, Memory
 
