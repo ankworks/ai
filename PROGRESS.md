@@ -5,7 +5,7 @@ Rules: a feature may only be `IMPLEMENTED` when it actually works end-to-end;
 `TESTED` requires meaningful automated tests; `BLOCKED` must name the blocker
 (credential, DNS, free-tier, phase dependency).
 
-_Last updated: 2026-10-18 (Phase 1 `114496b` + Phase 2 `5690249` shipped; Phase 3 committing this branch head)_
+_Last updated: 2026-10-18 (Phase 1 `114496b` + Phase 2 `5690249` + Phase 3 `eea72fa` shipped — all pushed)_
 
 ---
 
@@ -63,7 +63,7 @@ Gates at ship: lint 0 · typecheck 0 · 70/70 tests · build 0.
 | Admin session separation scaffolding              | PLANNED (Phase 6 — user instance uses prefix `conai`; admin instance planned with `conai_admin`)                                                                                       |
 | Admin roles/MFA, student review, referrals engine | PLANNED (Phases 5–6)                                                                                                                                                                   |
 
-## PHASE 3 — AI Gateway, Sparks, Chat
+## PHASE 3 — AI Gateway, Sparks, Chat — ✅ SHIPPED (commit `eea72fa`, pushed)
 
 | Feature                                                 | Status                                                                                                                                                                                             |
 | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
