@@ -1,0 +1,15 @@
+{
+  "name": "@conai/database",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "ConAI D1 database: migrations (wrangler d1 migrations) and row types",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./migrations/*": "./migrations/*"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

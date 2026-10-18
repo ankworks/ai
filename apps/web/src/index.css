@@ -1,0 +1,6 @@
+@import 'tailwindcss';
+@import '../../../packages/ui/src/styles/index.css';
+
+/* Workspace packages ship source — Tailwind must scan them for class names. */
+@source '../../../packages/ui/src';
+@source '../../../packages/shared/src';

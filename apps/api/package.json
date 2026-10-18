@@ -1,0 +1,32 @@
+{
+  "name": "@conai/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "ConAI API — Hono on Cloudflare Workers (D1 + KV + SSE AI gateway)",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "types": "wrangler types",
+    "db:migrate:local": "wrangler d1 migrations apply conai --local",
+    "db:migrate:remote": "wrangler d1 migrations apply conai --remote",
+    "typecheck": "tsc --noEmit",
+    "build": "wrangler deploy --dry-run --outdir dist"
+  },
+  "dependencies": {
+    "@conai/ai": "*",
+    "@conai/auth": "*",
+    "@conai/database": "*",
+    "@conai/permissions": "*",
+    "@conai/shared": "*",
+    "@conai/sparks": "*",
+    "@conai/storage": "*",
+    "better-auth": "^1.7.10",
+    "hono": "^4.13.13",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261016.1",
+    "wrangler": "^4.151.1"
+  }
+}

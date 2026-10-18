@@ -1,0 +1,202 @@
+/*
+ * ConAI brand tokens (Tailwind CSS 4).
+ *
+ * Official brand colors:
+ *   Primary Violet #7C3AED · Deep Indigo #4338CA · Soft Lavender #A78BFA
+ *   Background #F8F9FC · Surface #FFFFFF · Text #18181B
+ *
+ * Dark mode: [data-theme="dark"] on <html> (never prefers-color-scheme alone —
+ * the user's explicit choice always wins via the theme engine).
+ */
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ── Brand palettes (static) ─────────────────────────────────────────────── */
+@theme {
+  --font-heading: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+  /* Violet ramp anchored on official Primary Violet #7C3AED */
+  --color-brand-50: #f5f3ff;
+  --color-brand-100: #ede9fe;
+  --color-brand-200: #ddd6fe;
+  --color-brand-300: #c4b5fd;
+  --color-brand-400: #a78bfa; /* Soft Lavender (official) */
+  --color-brand-500: #8b5cf6;
+  --color-brand-600: #7c3aed; /* Primary Violet (official) */
+  --color-brand-700: #6d28d9;
+  --color-brand-800: #5b21b6;
+  --color-brand-900: #4c1d95;
+  --color-brand-950: #2e1065;
+
+  /* Indigo ramp anchored on official Deep Indigo #4338CA */
+  --color-indigo-deep-400: #818cf8;
+  --color-indigo-deep-500: #6366f1;
+  --color-indigo-deep-600: #4f46e5;
+  --color-indigo-deep-700: #4338ca; /* Deep Indigo (official) */
+  --color-indigo-deep-800: #3730a3;
+  --color-indigo-deep-900: #312e81;
+}
+
+/* ── Semantic tokens (runtime-switchable) ────────────────────────────────── */
+:root,
+[data-theme='light'] {
+  --background: #f8f9fc;
+  --foreground: #18181b;
+  --surface: #ffffff;
+  --card: #ffffff;
+  --card-foreground: #18181b;
+  --popover: #ffffff;
+  --popover-foreground: #18181b;
+
+  --primary: #7c3aed;
+  --primary-foreground: #ffffff;
+  --secondary: #ede9fe;
+  --secondary-foreground: #5b21b6;
+  --indigo: #4338ca;
+  --indigo-foreground: #ffffff;
+  --lavender: #a78bfa;
+  --bubble-user: #ede9fe;
+  --bubble-user-foreground: #3b2a68;
+
+  --muted: #f1f2f7;
+  --muted-foreground: #71717a;
+  --accent: #f1eefe;
+  --accent-foreground: #5b21b6;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --success: #16a34a;
+  --warning: #d97706;
+
+  --border: #e6e6ef;
+  --input: #e6e6ef;
+  --ring: #7c3aed;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #3f3f46;
+  --sidebar-hover: #f4f4f9;
+  --sidebar-active: #ede9fe;
+  --sidebar-border: #ececf3;
+
+  --chart-1: #7c3aed;
+  --chart-2: #4338ca;
+  --chart-3: #a78bfa;
+  --chart-4: #8b5cf6;
+  --chart-5: #6366f1;
+}
+
+[data-theme='dark'] {
+  --background: #0e0e13;
+  --foreground: #f4f4f5;
+  --surface: #16161d;
+  --card: #16161d;
+  --card-foreground: #f4f4f5;
+  --popover: #1b1b23;
+  --popover-foreground: #f4f4f5;
+
+  --primary: #8b5cf6;
+  --primary-foreground: #ffffff;
+  --secondary: #241c3f;
+  --secondary-foreground: #c4b5fd;
+  --indigo: #6366f1;
+  --indigo-foreground: #ffffff;
+  --lavender: #a78bfa;
+  --bubble-user: #2c2352;
+  --bubble-user-foreground: #ddd6fe;
+
+  --muted: #1f1f28;
+  --muted-foreground: #a1a1aa;
+  --accent: #241c3f;
+  --accent-foreground: #ddd6fe;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --success: #22c55e;
+  --warning: #f59e0b;
+
+  --border: #2a2a35;
+  --input: #2a2a35;
+  --ring: #8b5cf6;
+
+  --sidebar: #131319;
+  --sidebar-foreground: #c9c9d2;
+  --sidebar-hover: #1d1d26;
+  --sidebar-active: #241c3f;
+  --sidebar-border: #23232d;
+
+  --chart-1: #a78bfa;
+  --chart-2: #818cf8;
+  --chart-3: #7c3aed;
+  --chart-4: #6366f1;
+  --chart-5: #c4b5fd;
+}
+
+/* Map semantic tokens to Tailwind utilities: bg-background, text-muted-foreground, … */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-indigo: var(--indigo);
+  --color-indigo-foreground: var(--indigo-foreground);
+  --color-lavender: var(--lavender);
+  --color-bubble-user: var(--bubble-user);
+  --color-bubble-user-foreground: var(--bubble-user-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --font-heading: var(--font-heading);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+}
+
+/* ── Personalization: font size (root rem scale) ─────────────────────────── */
+[data-font-size='sm'] {
+  font-size: 93.75%;
+}
+[data-font-size='md'] {
+  font-size: 100%;
+}
+[data-font-size='lg'] {
+  font-size: 112.5%;
+}
+
+/* ── Personalization: compact density (tighter spacing scale) ────────────── */
+[data-density='compact'] {
+  --spacing: 0.2rem;
+}
+
+/* ── Personalization: reduced motion ─────────────────────────────────────── */
+[data-reduced-motion='true'] *,
+[data-reduced-motion='true'] *::before,
+[data-reduced-motion='true'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}

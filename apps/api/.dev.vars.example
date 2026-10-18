@@ -1,0 +1,51 @@
+# ConAI API — local secrets (copy to .dev.vars, which is git-ignored).
+# NEVER commit real values. Remote deploys use `wrangler secret put <NAME>`.
+
+# Phase 2 — sessions/CSRF signing (generate ≥32 random bytes: `openssl rand -hex 32`)
+SESSION_SECRET=
+
+# Phase 2 — public origin of this API (OAuth redirects, email links).
+# Dev default: http://localhost:8787 — required outside development.
+AUTH_BASE_URL=
+
+# Phase 2 — cookie Domain when using subdomain routing, e.g. .conai.dpdns.org
+COOKIE_DOMAIN=
+
+# Phase 2 — outbound email relay (REQUIRED in staging/production; development
+# prints verification/reset links to the Worker log instead of sending).
+# Any JSON POST endpoint (Resend-compatible): { from, to[], subject, html, text }
+EMAIL_API_URL=
+EMAIL_API_KEY=
+EMAIL_FROM=
+
+# Phase 2 — optional OpenID Connect SSO (discovered from OIDC_ISSUER)
+OIDC_ISSUER=
+OIDC_CLIENT_ID=
+OIDC_CLIENT_SECRET=
+
+# Phase 3 — AI provider (platform Owner-managed; never sent to browsers)
+OLLAMA_API_KEY=
+
+# Phase 2 — Cloudflare Turnstile server-side verification
+TURNSTILE_SECRET_KEY=
+
+# Phase 4 — Backblaze B2 (S3-compatible) application key
+B2_APP_KEY_ID=
+B2_APP_KEY=
+B2_BUCKET_REGION=
+
+# Phase 2 — OAuth provider secrets (never exposed to the frontend)
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+MICROSOFT_CLIENT_ID=
+MICROSOFT_CLIENT_SECRET=
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+
+# Phase 7 — Search gateway provider key
+SEARCH_API_KEY=
+SEARCH_PROVIDER=
+
+# Phase 7 — Web Push VAPID (generate: npx web-push generate-vapid-keys)
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=

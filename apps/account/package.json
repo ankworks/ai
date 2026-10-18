@@ -1,0 +1,31 @@
+{
+  "name": "@conai/account",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@conai/build": "*",
+    "@conai/shared": "*",
+    "@conai/ui": "*",
+    "@marsidev/react-turnstile": "^1.6.2",
+    "@tanstack/react-query": "^5.104.3",
+    "better-auth": "^1.7.10",
+    "lucide-react": "^1.59.0",
+    "motion": "^14.3.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router-dom": "^7.18.4",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "vite": "^8.3.4"
+  }
+}

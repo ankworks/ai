@@ -1,0 +1,14 @@
+{
+  "name": "@conai/sparks",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "ConAI Sparks engine \u2014 daily top-up refill, usage pricing, reservation settlement (pure, unit-tested)",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

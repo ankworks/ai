@@ -1,0 +1,21 @@
+{
+  "name": "@conai/auth",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "ConAI authentication: better-auth configuration (D1), email sender, KV rate limiting, CSRF helpers",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate:migration": "node scripts/generate-migration.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "better-auth": "^1.7.10"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261016.1"
+  }
+}

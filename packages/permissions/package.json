@@ -1,0 +1,14 @@
+{
+  "name": "@conai/permissions",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "ConAI role/permission evaluation for teams and admin \u2014 pure and unit-tested",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

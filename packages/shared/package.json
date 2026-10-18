@@ -1,0 +1,17 @@
+{
+  "name": "@conai/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared brand constants, i18n dictionaries, env schemas and DTO types for ConAI",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

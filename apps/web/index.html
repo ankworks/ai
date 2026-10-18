@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en" data-theme="light" data-font-size="md" data-density="comfortable">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="ConAI — a free-first AI workspace for assistance, education, productivity and collaboration."
+    />
+    <meta name="theme-color" content="#7C3AED" />
+    <title>ConAI — Your free-first AI workspace</title>
+    <script>
+      // Apply persisted preferences before first paint (no theme flash).
+      // CSP hardening (externalized/nonce) happens in Phase 8.
+      (function () {
+        try {
+          var s = JSON.parse(localStorage.getItem('conai.preferences') || '{}');
+          var p = s.state || s;
+          var theme = p.theme || 'light';
+          var resolved = theme;
+          if (theme === 'system') {
+            resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          }
+          var d = document.documentElement;
+          d.dataset.theme = resolved;
+          d.dataset.fontSize = p.fontSize || 'md';
+          d.dataset.density = p.compact ? 'compact' : 'comfortable';
+          d.dataset.reducedMotion = String(!!p.reducedMotion);
+          d.lang = p.language || 'en';
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
