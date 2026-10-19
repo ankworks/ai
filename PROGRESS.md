@@ -5,7 +5,7 @@ Rules: a feature may only be `IMPLEMENTED` when it actually works end-to-end;
 `TESTED` requires meaningful automated tests; `BLOCKED` must name the blocker
 (credential, DNS, free-tier, phase dependency).
 
-_Last updated: 2026-10-18 (Phase 1 `114496b` + Phase 2 `5690249` + Phase 3 `eea72fa`/`b21b3a3` + Phase 4 `3571c36` shipped — all pushed)_
+_Last updated: 2026-10-18 (Phase 1 `114496b` + Phase 2 `5690249` + Phase 3 `eea72fa`/`b21b3a3` + Phase 4 `3571c36` + Phase 5a Teams core shipped — all pushed)_
 
 ---
 
@@ -100,20 +100,29 @@ Gates: format 0 · lint 0 · typecheck 0 (now covers **all** packages + scripts)
 | PDF page-count (50 pp) + document-chat ingest                                              | PLANNED — DEFERRED: `files.page_count` column exists but page counting/ingest not wired; per-file 50-page rule NOT yet enforced (limit value is stored + served)                                                                                               |
 | Admin Global governance layer                                                              | PLANNED (Phase 6 — hierarchy Core → Tool → Prefs today, Admin Global slots above Tool then)                                                                                                                                                                    |
 
-## PHASE 5 — Teams
+## PHASE 5 — Teams — slice 1 (core) SHIPPED
 
-| Feature                                                              | Status                          |
-| -------------------------------------------------------------------- | ------------------------------- |
-| Teams, members, roles & fine-grained permissions                     | PLANNED (engine TESTED Phase 1) |
-| Modules toggle (10 modules)                                          | PLANNED                         |
-| Projects (Kanban/List/Calendar/Timeline)                             | PLANNED                         |
-| Tasks + assignments                                                  | PLANNED                         |
-| Channels (text/announcements/AI), threads, mentions, reactions, pins | PLANNED                         |
-| Voice/video messages (≤5 min, quota-counted)                         | PLANNED                         |
-| Documents, Calendar (ConAI)                                          | PLANNED                         |
-| Automations WHEN/IF/THEN + logs + loop protection                    | PLANNED                         |
-| Activity log (30-day retention)                                      | PLANNED                         |
-| AI-suggested automations w/ confirmation                             | PLANNED                         |
+Gates: lint 0 · typecheck 0 · **180/180 tests (21 new)** · build 0 · live e2e on wrangler :8787.
+
+| Feature                                                                                   | Status                                                                                                                            |
+| ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Migration 0005 (teams, members, custom roles, invites, 30-day activity log)               | TESTED — harness applies every migration dynamically; live `wrangler d1 migrations apply --local` 0001–0005 all ✅                |
+| Team CRUD + slug, plan entitlement (max_teams_per_account), 5-teams/account cap           | TESTED — personal plan → 403 `plan_not_entitled`; 6th team → 403 `team_limit_reached`; owner membership + `team.created` activity |
+| Membership roles (owner/admin/member/viewer) + server-side permission enforcement         | TESTED — viewer/member denied rename/invite/remove/role-change; owner untouchable; 404 hides team existence from non-members      |
+| Invites: link / email / @username + accept flow                                           | TESTED — targeted invites match the signed-in account (403 mismatch), 7-day expiry (410), revoke (410), duplicate 409, reuse 409  |
+| Member cap (30/team, plan-driven, re-checked at accept)                                   | TESTED — invite + accept both blocked with 403 `member_limit_reached`                                                             |
+| Custom roles (exact permission lists; owner-only perms ungrantable)                       | TESTED — custom set replaces built-in; role delete falls members back to built-in safely                                          |
+| Role changes, removal, self-leave, ownership transfer                                     | TESTED — no self-role-change, owner cannot leave/be removed, transfer swaps owner→admin                                           |
+| Module toggles (10 owner-toggleable modules)                                              | TESTED — GET merged defaults, PUT validated against TEAM_MODULES, `team.modules.manage` enforced                                  |
+| Team activity log (30-day retention, swept inline)                                        | TESTED — old rows purged on read; actor username joined                                                                           |
+| Free plan self-selection (PATCH /me planId: personal↔teams; student/enterprise excluded)  | TESTED — `plan_not_selectable` for verification-gated / contact-sales plans                                                       |
+| Workspace Teams UI (list, create, rename, members, invites, modules, activity, join link) | IMPLEMENTED — permission-aware buttons driven by server-reported `myPermissions`; EN/VI i18n; vite smoke + build pass             |
+| Projects (Kanban/List/Calendar/Timeline)                                                  | PLANNED (slice 2)                                                                                                                 |
+| Tasks + assignments                                                                       | PLANNED (slice 2)                                                                                                                 |
+| Channels (text/announcements/AI), threads, mentions, reactions, pins                      | PLANNED (slice 3)                                                                                                                 |
+| Voice/video messages (≤5 min, quota-counted)                                              | PLANNED (slice 3)                                                                                                                 |
+| Team documents / shared files (B2 team bucket wiring)                                     | PLANNED (slice 3 — `files.scope='team'` column already shipped in 0004)                                                           |
+| Team calendar, automations WHEN/IF/THEN + logs, AI-suggested automations                  | PLANNED (later slices)                                                                                                            |
 
 ## PHASE 6 — Admin, Governance, Verification, Trust & Safety
 

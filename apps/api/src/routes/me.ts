@@ -130,11 +130,16 @@ export function registerAccountRoutes(app: Hono<AppEnv>): void {
       .object({
         displayName: z.string().trim().min(1).max(60).optional(),
         locale: z.enum(['en', 'vi']).optional(),
+        planId: z.string().min(1).max(30).optional(),
       })
       .safeParse(body);
     if (!parsed.success)
       return errorResponse('invalid_request', 'Invalid profile payload', 400, c.get('requestId'));
-    if (parsed.data.displayName === undefined && parsed.data.locale === undefined) {
+    if (
+      parsed.data.displayName === undefined &&
+      parsed.data.locale === undefined &&
+      parsed.data.planId === undefined
+    ) {
       return errorResponse(
         'invalid_request',
         'No updatable fields provided',
@@ -147,15 +152,37 @@ export function registerAccountRoutes(app: Hono<AppEnv>): void {
     if (!shell)
       return errorResponse('unauthenticated', 'Sign in required', 401, c.get('requestId'));
 
+    // Self-serve plan switch: every plan is free (no payment system exists),
+    // but verification-gated plans (Student) and contact-sales plans
+    // (Enterprise) stay admin/manual — PRODUCT_SPEC §8.
+    let planId = shell.planId;
+    if (parsed.data.planId !== undefined && parsed.data.planId !== shell.planId) {
+      const target = await c.env.DB.prepare(
+        `SELECT id FROM plan_configs
+          WHERE id = ? AND active = 1 AND requires_verification = 0 AND id <> 'enterprise'`,
+      )
+        .bind(parsed.data.planId)
+        .first<{ id: string }>();
+      if (!target)
+        return errorResponse(
+          'plan_not_selectable',
+          'That plan cannot be self-selected',
+          403,
+          c.get('requestId'),
+        );
+      planId = target.id;
+    }
+
     const now = new Date().toISOString();
     await c.env.DB.prepare(
       `UPDATE user_profiles
          SET display_name = COALESCE(?, display_name),
              locale = COALESCE(?, locale),
+             plan_id = COALESCE(?, plan_id),
              updated_at = ?
        WHERE id = ?`,
     )
-      .bind(parsed.data.displayName ?? null, parsed.data.locale ?? null, now, data.user.id)
+      .bind(parsed.data.displayName ?? null, parsed.data.locale ?? null, planId, now, data.user.id)
       .run();
 
     c.header('Cache-Control', 'no-store');
@@ -167,7 +194,7 @@ export function registerAccountRoutes(app: Hono<AppEnv>): void {
         username: shell.username,
         displayName: parsed.data.displayName ?? shell.displayName,
         locale: parsed.data.locale ?? shell.locale,
-        planId: shell.planId,
+        planId,
         referralCode: shell.referralCode,
         avatarUrl: (data.user.image as string | null | undefined) ?? null,
       },
