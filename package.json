@@ -22,6 +22,7 @@
     "dev:status": "npm run dev --workspace @conai/status",
     "dev:api": "npm run dev --workspace @conai/api",
     "build": "npm run build --workspaces --if-present",
+    "deploy": "npm run deploy --workspace @conai/api",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
