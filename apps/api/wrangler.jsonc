@@ -3,7 +3,9 @@
 // Secrets:    apps/api/.dev.vars (local) / `wrangler secret put …` (remote) — never committed.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "conai-api",
+  // Must match the Worker name in the Cloudflare dashboard / Workers Build
+  // connected build ("ai"). A mismatch makes CI override the name and warn.
+  "name": "ai",
   "main": "src/index.ts",
   "compatibility_date": "2026-10-01",
   // nodejs_compat is REQUIRED by better-auth (AsyncLocalStorage via node:async_hooks and

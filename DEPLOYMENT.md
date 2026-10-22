@@ -125,10 +125,32 @@ Mode is selected by config only — see `docs/DNS_AND_ROUTING.md`.
 
 ## 8. Deploy
 
+This is an npm-workspaces monorepo and the only Worker config lives in
+`apps/api/wrangler.jsonc`. **Wrangler v4 refuses to run its application
+detection from the workspace root** ("run in the root of a workspace instead
+of targeting a specific project"), so deploy commands must target the API
+workspace — never a bare `npx wrangler deploy` from the repo root:
+
 ```bash
 npm run build
-npx wrangler deploy          # api worker (+ assets per mode config)
+npm run deploy               # root script -> `npm run deploy --workspace @conai/api`
+# equivalent, explicit form:
+cd apps/api && npx wrangler deploy
 ```
+
+### Cloudflare Workers Builds (connected Git build)
+
+Configure the Worker's build settings (dashboard → Worker → Settings → Builds)
+to run the deploy from the API workspace:
+
+| Setting        | Value                                                      |
+| -------------- | ---------------------------------------------------------- |
+| Build command  | `npm run build`                                            |
+| Deploy command | `npm run deploy` (or `cd apps/api && npx wrangler deploy`) |
+
+The Worker `name` in `apps/api/wrangler.jsonc` must match the connected Worker
+resource — currently `ai`. A mismatch only produces a warning because CI
+overrides the name, but it means local and CI deploys target different names.
 
 Static assets deploy with the Worker(s) via the `assets` binding (Workers Static Assets).
 Each app's `dist/` is the asset directory. Rollback: Cloudflare dashboard →
