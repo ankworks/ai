@@ -22,7 +22,7 @@
       "binding": "DB",
       "database_name": "conai",
       // Replace with the real id from `wrangler d1 create conai` before remote deploys.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "6b83445a-d943-4322-b7cb-4365812f2171",
       "migrations_dir": "../../packages/database/migrations",
     },
   ],
@@ -30,7 +30,7 @@
     {
       "binding": "CACHE",
       // Replace with the real id from `wrangler kv namespace create CACHE` before remote deploys.
-      "id": "00000000000000000000000000000000",
+      "id": "72a324f6e93b45e7af163cccc46121eb",
     },
   ],
   "observability": { "enabled": true },
