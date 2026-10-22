@@ -1,0 +1,50 @@
+name: CI
+
+# Every gate runs on PRs and on main. The same npm scripts are used locally,
+# so CI can only fail in ways a developer can reproduce with one command.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel superseded runs on the same ref; never cancel a main-branch run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Lint · typecheck · test · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Install Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies (frozen lockfile)
+        run: npm ci
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck (all workspaces)
+        run: npm run typecheck
+
+      - name: Unit/integration tests (Vitest, real SQLite)
+        run: npm test
+
+      - name: Build all workspaces and assemble SPA assets
+        run: npm run build

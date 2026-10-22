@@ -14,7 +14,7 @@
  *  - captcha plugin verifies Turnstile via the `x-captcha-response` header.
  */
 
-import { betterAuth, type BetterAuthOptions } from 'better-auth';
+import { betterAuth, APIError, type BetterAuthOptions } from 'better-auth';
 import { username } from 'better-auth/plugins/username';
 import { captcha } from 'better-auth/plugins/captcha';
 import { genericOAuth } from 'better-auth/plugins/generic-oauth';
@@ -65,6 +65,27 @@ function accountShellHooks(db: D1Database): NonNullable<BetterAuthOptions['datab
       create: {
         after: async (user) => {
           await createAccountShell(db, user as unknown as Record<string, unknown>);
+        },
+      },
+    },
+    // Admin plane can ban a user (0006). A ban blocks every NEW user-plane
+    // session; existing cookies are rejected at the API/session layer on use.
+    session: {
+      create: {
+        before: async (sessionData) => {
+          const userId = typeof sessionData.userId === 'string' ? sessionData.userId : '';
+          if (userId) {
+            const row = await db
+              .prepare(`SELECT banned FROM "user" WHERE id = ?`)
+              .bind(userId)
+              .first<{ banned: number }>();
+            if (row?.banned === 1) {
+              throw new APIError('FORBIDDEN', {
+                message: 'Account is banned',
+                code: 'ACCOUNT_BANNED',
+              });
+            }
+          }
         },
       },
     },

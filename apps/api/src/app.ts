@@ -15,6 +15,8 @@ import { registerMemoryRoutes } from './routes/memory';
 import { registerPromptRoutes } from './routes/prompts';
 import { registerFileRoutes } from './routes/files';
 import { registerTeamRoutes } from './routes/teams';
+import { registerAdminRoutes } from './routes/admin';
+import { getAdminAuth } from './admin-auth';
 
 /**
  * Builds the Hono app. The validated environment (zod) is supplied per request by
@@ -46,12 +48,16 @@ export function createApp(): Hono<AppEnv> {
         prompts: '/api/v1/ai/prompts',
         files: '/api/v1/files',
         teams: '/api/v1/teams',
+        adminAuth: '/api/admin-auth/*',
+        admin: '/api/admin/*',
       },
     }),
   );
 
-  // better-auth — user-plane session (Phase 2). Admin instance mounts separately (Phase 6).
+  // better-auth — user-plane session (Phase 2).
   app.all('/api/auth/*', (c) => getAuth(c.env).handler(c.req.raw));
+  // better-auth — admin-plane session (Phase 6): separate cookie prefix + TOTP MFA.
+  app.all('/api/admin-auth/*', (c) => getAdminAuth(c.env).handler(c.req.raw));
 
   registerHealthRoutes(app);
   registerStatusRoutes(app);
@@ -62,6 +68,7 @@ export function createApp(): Hono<AppEnv> {
   registerPromptRoutes(app);
   registerFileRoutes(app);
   registerTeamRoutes(app);
+  registerAdminRoutes(app);
 
   // Static assets (path mode): unmatched GET/HEAD serves the assembled SPAs
   // with per-prefix index.html fallback; other methods get a JSON 404.

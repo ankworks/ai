@@ -1,9 +1,10 @@
 /**
- * Double-submit CSRF for ConAI-owned routes (`/api/v1/*`).
+ * Double-submit CSRF for ConAI-owned routes (`/api/v1/*` and `/api/admin/*`).
  *
- * better-auth endpoints (`/api/auth/*`) carry their own Origin/Fetch-Metadata
- * CSRF checks (see SECURITY.md §3) — this layer only guards our routes.
- * Safe methods also mint the `conai_csrf` cookie so the first mutation works.
+ * better-auth endpoints (`/api/auth/*`, `/api/admin-auth/*`) carry their own
+ * Origin/Fetch-Metadata CSRF checks (see SECURITY.md §3) — this layer only
+ * guards our own routes. Safe methods also mint the `conai_csrf` cookie so the
+ * first mutation works.
  */
 
 import { createMiddleware } from 'hono/factory';
@@ -11,9 +12,16 @@ import { CSRF_HEADER, checkCsrf, createCsrfCookie, isStateChanging } from '@cona
 import type { AppEnv } from '../env';
 import { errorResponse, queueHeader } from './security';
 
+const CSRF_PROTECTED_PREFIXES = ['/api/v1', '/api/admin'];
+
 export const csrfMiddleware = createMiddleware<AppEnv>(async (c, next) => {
   const path = new URL(c.req.url).pathname;
-  if (!path.startsWith('/api/v1')) return next();
+  // Exact segment boundary — '/api/admin' must NOT swallow '/api/admin-auth/*'
+  // (those are better-auth endpoints with their own CSRF layer).
+  const protectedPath = CSRF_PROTECTED_PREFIXES.some(
+    (prefix) => path === prefix || path.startsWith(`${prefix}/`),
+  );
+  if (!protectedPath) return next();
 
   const secure = c.env.ENVIRONMENT === 'production';
   const cookieHeader = c.req.header('cookie') ?? null;

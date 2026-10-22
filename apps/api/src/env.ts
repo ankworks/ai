@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { AdminContext } from './routes/admin';
 
 /**
  * Worker environment bundle — every env var is validated at boot (spec §28).
@@ -48,6 +49,10 @@ export const envSchema = z.object({
   EMAIL_API_URL: z.string().url().optional(),
   EMAIL_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().optional(),
+
+  // Admin plane (Phase 6) — comma-separated emails allowed to bootstrap the
+  // Owner role on first admin sign-in. Empty = admin plane stays closed.
+  ADMIN_OWNER_EMAILS: z.string().optional(),
 });
 
 export type EnvValues = z.infer<typeof envSchema>;
@@ -71,7 +76,11 @@ export function parseEnv(raw: Partial<Record<string, string>>): Env {
 /** Hono app environment: Worker bindings + per-request variables. */
 export type AppEnv = {
   Bindings: Env;
-  Variables: { requestId: string; pendingHeaders: Record<string, string> };
+  Variables: {
+    requestId: string;
+    pendingHeaders: Record<string, string>;
+    admin?: AdminContext;
+  };
 };
 
 export function allowedOrigins(env: Env): string[] {

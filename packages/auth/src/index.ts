@@ -15,3 +15,9 @@ export {
   type ConaiAuthDeps,
   type OAuthEnv,
 } from './config.ts';
+export {
+  createAdminAuthOptions,
+  createConaiAdminAuth,
+  type ConaiAdminAuth,
+  type ConaiAdminAuthDeps,
+} from './admin.ts';
