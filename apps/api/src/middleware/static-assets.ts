@@ -31,6 +31,11 @@ function jsonNotFound(c: Context<AppEnv>): Response {
   );
 }
 
+/** Browser navigations request HTML; sub-resource requests (JS/CSS/…) never do. */
+function isHtmlNavigation(req: Request): boolean {
+  return (req.headers.get('accept') ?? '').includes('text/html');
+}
+
 /** GET/HEAD catch-all: static files plus SPA index.html fallback. */
 export async function serveStaticAssets(c: Context<AppEnv>): Promise<Response> {
   const { pathname } = new URL(c.req.url);
@@ -52,8 +57,14 @@ export async function serveStaticAssets(c: Context<AppEnv>): Promise<Response> {
     return exact;
   }
 
-  // Deep link inside a mounted SPA → serve that SPA's directory index.
-  // Fetch the directory URL (e.g. `/app/`), not `/app/index.html`: with
+  // A missing hashed JS/CSS/file must surface as a real 404 — never as HTML,
+  // which browsers reject with an opaque MIME error and a blank page.
+  if (!isHtmlNavigation(c.req.raw)) {
+    return exact;
+  }
+
+  // Deep link / full reload inside a mounted SPA → serve that SPA's directory
+  // index. Fetch the directory URL (e.g. `/app/`), not `/app/index.html`: with
   // html_handling=auto-trailing-slash the latter answers with a 307 redirect.
   const prefix = SPA_PREFIXES.find((p) => pathname === p || pathname.startsWith(`${p}/`));
   const indexUrl = prefix ? `${prefix}/` : '/';
