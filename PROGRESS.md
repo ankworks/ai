@@ -60,7 +60,7 @@ Gates at ship: lint 0 · typecheck 0 · 70/70 tests · build 0.
 | Device/session management UI                      | IMPLEMENTED — sessions list (current flag via session id), revoke; privacy note (no permanent IP bans)                                                                                 |
 | Account platform sections (functional)            | IMPLEMENTED — Overview, Profile, Security, Devices, Connected, Plans, Sparks live-read real data; referrals/storage/memory/notifications/verification still Phase-planned placeholders |
 | Sign-in/Sign-up UI (EN/VI, Turnstile-ready)       | IMPLEMENTED — `apps/account` auth pages + i18n; browser-level E2E not yet automated (API e2e + Vite module smoke pass)                                                                 |
-| Admin session separation scaffolding              | PLANNED (Phase 6 — user instance uses prefix `conai`; admin instance planned with `conai_admin`)                                                                                       |
+| Admin session separation                          | IMPLEMENTED (Phase 6 slice 1 — second better-auth instance with prefix `conai_admin`, basePath `/api/admin-auth`, TOTP MFA, sign-up disabled; cross-plane cookie reuse rejected with 401)          |
 | Admin roles/MFA, student review, referrals engine | PLANNED (Phases 5–6)                                                                                                                                                                   |
 
 ## PHASE 3 — AI Gateway, Sparks, Chat — ✅ SHIPPED (commit `eea72fa`, pushed)
@@ -124,18 +124,24 @@ Gates: lint 0 · typecheck 0 · **180/180 tests (21 new)** · build 0 · live e2
 | Team documents / shared files (B2 team bucket wiring)                                     | PLANNED (slice 3 — `files.scope='team'` column already shipped in 0004)                                                           |
 | Team calendar, automations WHEN/IF/THEN + logs, AI-suggested automations                  | PLANNED (later slices)                                                                                                            |
 
-## PHASE 6 — Admin, Governance, Verification, Trust & Safety
+## PHASE 6 — Admin, Governance, Verification, Trust & Safety — slice 1 (admin platform) SHIPPED
 
-| Feature                                                         | Status                                      |
-| --------------------------------------------------------------- | ------------------------------------------- |
-| Admin auth (MFA, trusted devices, lockdown, recovery)           | PLANNED (BLOCKED on TOTP design in Phase 2) |
-| Admin roles & custom permissions                                | PLANNED (matrices TESTED Phase 1)           |
-| Admin modules (16)                                              | PLANNED                                     |
-| Student verification workflow + protected docs                  | PLANNED (BLOCKED on B2 for docs)            |
-| AI Governance (policies, versions, rollback, playground, audit) | PLANNED                                     |
-| Referral system (anti-abuse, atomic rewards)                    | PLANNED                                     |
-| Trust Center pages + reports/enforcement/appeals                | PLANNED                                     |
-| Admin audit log (90-day retention + cleanup cron)               | PLANNED                                     |
+Gates: lint 0 · typecheck 0 · **202/202 tests (16 new Phase 6)** · full 5-SPA build 0.
+
+| Feature                                                         | Status                                                                                                                                                                                                  |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Admin auth — separate better-auth instance (`/api/admin-auth`, `conai_admin` cookies, sign-up disabled) | TESTED — user-plane cookie rejected with 401 on admin routes; self-serve admin sign-up refused; Owner bootstrap from `ADMIN_OWNER_EMAILS` audited                                          |
+| Admin MFA (TOTP RFC 6235 + 10 backup codes, mandatory)          | TESTED — enable→verify→confirm flow; all admin routes except /me return `mfa_required` pre-enrollment; second sign-in requires TOTP; lockout/attempt handling inherited from better-auth              |
+| Admin roles & custom permissions (6 roles, 23 permissions)      | TESTED — server-side `adminCan` on every route; moderator matrix enforced (403 on settings/grants); custom-permission JSON overrides supported; only Owner grants/revokes Owner; last-Owner/self guards |
+| Admin modules — 5 of 16 live (Dashboard, Users, Admins, Audit, Settings) | IMPLEMENTED — real D1 data, EN/VI i18n, permission-filtered nav; remaining 11 render honest "not implemented" placeholders (no fake controls)                                          |
+| User lock/unlock (ban) + audit trail                            | TESTED — banned users blocked from new sessions on BOTH auth planes; every mutation writes an immutable `admin_audit_log` row (actor, action, target, metadata, IP)                                  |
+| Platform settings editor (allowlisted `platform_settings` keys) | TESTED — unknown keys rejected 400, valid JSON objects upserted and audited                                                                                                                            |
+| Migration 0006 (admin_members, admin_audit_log, twoFactor, user flags) | TESTED — applied dynamically by the harness; required before deploy (see `docs/ADMIN.md`)                                                                                                     |
+| Student verification workflow + protected docs                  | PLANNED (BLOCKED on B2 for docs)                                                                                                                                                                        |
+| AI Governance (policies, versions, rollback, playground, audit) | PLANNED                                                                                                                                                                                                 |
+| Referral system (anti-abuse, atomic rewards)                    | PLANNED                                                                                                                                                                                                 |
+| Trust Center pages + reports/enforcement/appeals                | PLANNED                                                                                                                                                                                                 |
+| Audit log 90-day retention cleanup cron                         | PLANNED (table + writes shipped; cron lands with Phase 8 status/scheduled work)                                                                                                                         |
 
 ## PHASE 7 — Search, Deep Research, Calendar, Notifications
 

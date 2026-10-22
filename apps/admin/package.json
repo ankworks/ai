@@ -14,6 +14,7 @@
     "@conai/shared": "*",
     "@conai/ui": "*",
     "@tanstack/react-query": "^5.104.3",
+    "better-auth": "^1.7.10",
     "lucide-react": "^1.59.0",
     "motion": "^14.3.0",
     "react": "^19.3.1",

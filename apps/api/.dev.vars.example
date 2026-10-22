@@ -49,3 +49,8 @@ SEARCH_PROVIDER=
 # Phase 7 — Web Push VAPID (generate: npx web-push generate-vapid-keys)
 VAPID_PUBLIC_KEY=
 VAPID_PRIVATE_KEY=
+
+# Phase 6 — comma-separated emails allowed to bootstrap the Owner role on
+# first admin sign-in at /admin/. The account must already exist and be verified.
+# Leave empty to keep the admin plane closed.
+ADMIN_OWNER_EMAILS=

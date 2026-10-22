@@ -168,6 +168,35 @@ export const TEAM_ACTIVITY_TYPES = [
 ] as const;
 export type TeamActivityType = (typeof TEAM_ACTIVITY_TYPES)[number];
 
+// ── Admin plane (Phase 6, migration 0006) ───────────────────────────
+
+/** Mirrors the CHECK constraint in 0006_admin.sql. */
+export const ADMIN_MEMBER_STATUS = ['active', 'locked'] as const;
+export type AdminMemberStatus = (typeof ADMIN_MEMBER_STATUS)[number];
+
+export interface AdminMemberRow {
+  user_id: string;
+  role: string; // AdminRole from @conai/permissions — kept loose at the DB layer
+  custom_permissions: string | null; // JSON array of admin.* permissions, or null
+  status: AdminMemberStatus;
+  mfa_enrolled: number;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+}
+
+export interface AdminAuditRow {
+  id: string;
+  actor_id: string;
+  actor_name: string | null;
+  action: string;
+  target_type: string | null;
+  target_id: string | null;
+  metadata: string | null; // JSON — never contains secrets
+  ip_address: string | null;
+  created_at: string;
+}
+
 /** Stable keys seeded in 0001 — referenced by API and admin code. */
 export const SETTING_KEYS = {
   sparksPricing: 'sparks.pricing',
