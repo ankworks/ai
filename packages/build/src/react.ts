@@ -13,7 +13,7 @@
 
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import { defineConfig, type Plugin, type ProxyOptions, type UserConfig } from 'vite';
+import { defineConfig, type Plugin, type ProxyOptions, type UserConfigFn } from 'vite';
 
 /** Default target of the dev `/api` proxy — `npm run dev:api` (wrangler :8787). */
 export const DEFAULT_API_PROXY_TARGET = 'http://localhost:8787';
@@ -27,11 +27,28 @@ export interface ReactAppConfigOptions {
   proxy?: Record<string, string | ProxyOptions>;
   /** Build output directory (default `dist`). */
   outDir?: string;
+  /**
+   * Public base path used ONLY for production builds (path-mode deployment,
+   * e.g. `/app/`, `/account/`). Drives Vite `base` → asset URLs and
+   * `import.meta.env.BASE_URL` (router basename). Dev servers always stay at
+   * `/` because each app runs on its own port. Defaults to `/`.
+   */
+  basePath?: string;
 }
 
-export function reactAppConfig(options: ReactAppConfigOptions): UserConfig {
-  const { port, plugins = [], proxy, outDir = 'dist' } = options;
-  return defineConfig({
+/** Vite requires `base` to start and end with a slash (`/` is already valid). */
+function normalizeBase(basePath: string | undefined): string {
+  if (!basePath || basePath === '/') return '/';
+  const withLeading = basePath.startsWith('/') ? basePath : `/${basePath}`;
+  return withLeading.endsWith('/') ? withLeading : `${withLeading}/`;
+}
+
+export function reactAppConfig(options: ReactAppConfigOptions): UserConfigFn {
+  const { port, plugins = [], proxy, outDir = 'dist', basePath } = options;
+  return defineConfig(({ command }) => ({
+    // Production mounts SPAs under path prefixes on the single Worker;
+    // `vite dev`/`vite preview` keep serving each app from its own port root.
+    base: command === 'build' ? normalizeBase(basePath) : '/',
     plugins: [react(), tailwindcss(), ...plugins],
     server: {
       port,
@@ -56,5 +73,5 @@ export function reactAppConfig(options: ReactAppConfigOptions): UserConfig {
     resolve: {
       dedupe: ['react', 'react-dom', 'react-router-dom'],
     },
-  });
+  }));
 }

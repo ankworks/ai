@@ -12,7 +12,7 @@ const app = createApp();
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const vars = parseEnv(env as unknown as Record<string, string>);
-    const validated: Env = { ...vars, DB: env.DB, CACHE: env.CACHE };
+    const validated: Env = { ...vars, DB: env.DB, CACHE: env.CACHE, ASSETS: env.ASSETS };
     return app.fetch(request, validated, ctx);
   },
 } satisfies ExportedHandler<Env>;

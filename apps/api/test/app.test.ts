@@ -40,10 +40,25 @@ function makeApp(envOverrides: Partial<Record<string, string>> = {}, bindings: P
   return { app, env: { ...env, ...bindings } };
 }
 
-describe('GET /', () => {
+/** Minimal Workers Static Assets binding: path -> HTML body, 404 otherwise. */
+function mockAssets(files: Record<string, string>): Fetcher {
+  return {
+    fetch: async (input: Request | string | URL) => {
+      const pathname = new URL(
+        typeof input === 'string' || input instanceof URL ? input : input.url,
+        'http://local',
+      ).pathname;
+      const body = files[pathname];
+      if (body === undefined) return new Response('not found', { status: 404 });
+      return new Response(body, { headers: { 'content-type': 'text/html; charset=utf-8' } });
+    },
+  } as unknown as Fetcher;
+}
+
+describe('GET /api', () => {
   it('returns API metadata with endpoint discovery', async () => {
     const { app, env } = makeApp();
-    const res = await app.request('/', {}, env);
+    const res = await app.request('/api', {}, env);
     expect(res.status).toBe(200);
     const body = await readJson<RootBody>(res);
     expect(body).toMatchObject({
@@ -51,6 +66,46 @@ describe('GET /', () => {
       routingMode: 'path',
       endpoints: { health: '/api/v1/health', status: '/api/v1/status' },
     });
+  });
+});
+
+describe('static assets (path mode)', () => {
+  const assets = mockAssets({
+    '/': '<!doctype html><title>web</title>',
+    '/app/': '<!doctype html><title>workspace</title>',
+    '/assets/index-abc.js': 'export {}',
+  });
+
+  it('serves the root SPA index.html at / via the ASSETS binding', async () => {
+    const { app, env } = makeApp({}, { ASSETS: assets });
+    const res = await app.request('/', {}, env);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('text/html');
+    expect(await res.text()).toContain('<title>web</title>');
+    // Asset responses must not inherit the API-only CSP.
+    expect(res.headers.get('Content-Security-Policy')).toBeNull();
+  });
+
+  it('passes exact static-file requests through to the asset worker', async () => {
+    const { app, env } = makeApp({}, { ASSETS: assets });
+    const res = await app.request('/assets/index-abc.js', {}, env);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe('export {}');
+  });
+
+  it('falls back to the mounted SPA index.html for client-side deep links', async () => {
+    const { app, env } = makeApp({}, { ASSETS: assets });
+    const res = await app.request('/app/conversations/123', {}, env);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain('<title>workspace</title>');
+  });
+
+  it('returns JSON 404 for non-API paths when no ASSETS binding is configured', async () => {
+    const { app, env } = makeApp();
+    const res = await app.request('/', {}, env);
+    expect(res.status).toBe(404);
+    const body = await readJson<ErrorBody>(res);
+    expect(body.error.code).toBe('not_found');
   });
 });
 
