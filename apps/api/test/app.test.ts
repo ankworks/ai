@@ -78,7 +78,7 @@ describe('static assets (path mode)', () => {
 
   it('serves the root SPA index.html at / via the ASSETS binding', async () => {
     const { app, env } = makeApp({}, { ASSETS: assets });
-    const res = await app.request('/', {}, env);
+    const res = await app.request('/', { headers: { Accept: 'text/html' } }, env);
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toContain('text/html');
     expect(await res.text()).toContain('<title>web</title>');
@@ -95,9 +95,28 @@ describe('static assets (path mode)', () => {
 
   it('falls back to the mounted SPA index.html for client-side deep links', async () => {
     const { app, env } = makeApp({}, { ASSETS: assets });
-    const res = await app.request('/app/conversations/123', {}, env);
+    const res = await app.request(
+      '/app/conversations/123',
+      { headers: { Accept: 'text/html' } },
+      env,
+    );
     expect(res.status).toBe(200);
     expect(await res.text()).toContain('<title>workspace</title>');
+  });
+
+  it('never answers a missing JS/CSS file with SPA HTML (keeps the raw 404)', async () => {
+    const { app, env } = makeApp({}, { ASSETS: assets });
+    const res = await app.request(
+      '/app/assets/missing-hash.js',
+      {
+        // Module scripts request with `Accept: */*`, never text/html.
+        headers: { Accept: '*/*' },
+      },
+      env,
+    );
+    expect(res.status).toBe(404);
+    expect(res.headers.get('content-type')).not.toContain('text/html');
+    expect(await res.text()).toBe('not found');
   });
 
   it('returns JSON 404 for non-API paths when no ASSETS binding is configured', async () => {
