@@ -48,9 +48,17 @@ export function queueHeader(
   c.set('pendingHeaders', { ...current, [name]: value });
 }
 
-export function isOriginAllowed(env: Env, origin: string | undefined | null): boolean {
+export function isOriginAllowed(
+  env: Env,
+  origin: string | undefined | null,
+  requestOrigin?: string,
+): boolean {
   if (!origin) return true; // non-browser or same-origin no-CORS request
   if (origin === 'null') return false;
+  // Path mode serves SPAs and the API from one hostname: module scripts,
+  // stylesheets and fetches sent by our own pages carry an Origin header but
+  // are same-origin — they must never be blocked by the cross-origin list.
+  if (requestOrigin && origin === requestOrigin) return true;
   return allowedOrigins(env).includes(origin);
 }
 
@@ -62,6 +70,8 @@ export const securityMiddleware = createMiddleware<AppEnv>(async (c, next) => {
       ? incomingId
       : crypto.randomUUID().slice(0, 8);
   const origin = c.req.header('origin');
+  const requestOrigin = new URL(c.req.url).origin;
+  const sameOrigin = origin !== undefined && origin === requestOrigin;
   const started = Date.now();
   c.set('requestId', requestId);
   c.set('pendingHeaders', {});
@@ -73,8 +83,10 @@ export const securityMiddleware = createMiddleware<AppEnv>(async (c, next) => {
   };
   if (secure) pending['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains';
 
-  const originAllowed = isOriginAllowed(env, origin);
-  if (originAllowed && origin) {
+  const originAllowed = isOriginAllowed(env, origin, requestOrigin);
+  // CORS headers are meaningful only for cross-origin browser requests;
+  // same-origin responses don't need (and shouldn't advertise) them.
+  if (originAllowed && origin && !sameOrigin) {
     pending['Access-Control-Allow-Origin'] = origin;
     pending['Access-Control-Allow-Credentials'] = 'true';
     pending['Vary'] = 'Origin';

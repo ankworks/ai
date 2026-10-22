@@ -243,6 +243,26 @@ describe('security middleware', () => {
     expect(denied.headers.get('Access-Control-Allow-Origin')).toBeNull();
   });
 
+  it('always allows same-origin requests even when the Origin header is present', async () => {
+    // Regression: <script type="module" crossorigin> sends Origin; the CORS
+    // allowlist (localhost dev ports) must not 403 our own deployed assets/API.
+    const { app, env } = makeApp();
+    const sameOrigin = 'http://localhost'; // hono's default test request origin
+
+    const api = await app.request('/api/v1/health', { headers: { Origin: sameOrigin } }, env);
+    expect(api.status).toBe(200);
+    expect(api.headers.get('Access-Control-Allow-Origin')).toBeNull();
+
+    const assets = mockAssets({ '/': '<!doctype html><title>web</title>' });
+    const page = await app.request(
+      '/',
+      { headers: { Origin: sameOrigin, Accept: 'text/html' } },
+      { ...env, ASSETS: assets },
+    );
+    expect(page.status).toBe(200);
+    expect(await page.text()).toContain('<title>web</title>');
+  });
+
   it('rejects state-changing requests from unknown origins (403)', async () => {
     const { app, env } = makeApp();
     const res = await app.request(
