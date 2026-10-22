@@ -1,3 +1,4 @@
 import { reactAppConfig } from '../../packages/build/src/react.ts';
 
-export default reactAppConfig({ port: 5173 });
+// Path mode: web is the root SPA at `/` (see scripts/assemble-assets.mjs).
+export default reactAppConfig({ port: 5173, basePath: '/' });

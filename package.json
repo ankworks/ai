@@ -21,7 +21,7 @@
     "dev:admin": "npm run dev --workspace @conai/admin",
     "dev:status": "npm run dev --workspace @conai/status",
     "dev:api": "npm run dev --workspace @conai/api",
-    "build": "npm run build --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present && node scripts/assemble-assets.mjs",
     "deploy": "npm run deploy --workspace @conai/api",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint .",

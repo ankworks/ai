@@ -116,6 +116,7 @@ export const securityMiddleware = createMiddleware<AppEnv>(async (c, next) => {
 
   const path = new URL(c.req.url).pathname;
   const response = c.res;
+
   // eslint-disable-next-line no-console -- intentional structured access log (paths redacted)
   console.log(
     JSON.stringify({
@@ -127,6 +128,14 @@ export const securityMiddleware = createMiddleware<AppEnv>(async (c, next) => {
       durationMs: Date.now() - started,
     }),
   );
+
+  // Static asset responses (SPAs) keep the headers produced by the asset
+  // worker (Content-Type, ETag, caching). The API-only CSP below is
+  // `default-src 'none'` and would blank every HTML page if applied here.
+  if (!path.startsWith('/api/')) {
+    return response;
+  }
+
   apply(response);
   return response;
 });

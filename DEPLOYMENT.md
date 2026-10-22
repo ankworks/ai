@@ -113,7 +113,8 @@ api.conai.dpdns.org/*             → api worker
 Cookies: `Domain=.conai.dpdns.org` (set by API), `Secure`, `HttpOnly`.
 CORS allowlist = the five app origins.
 
-**B. Path mode (fallback):** single Worker with `assets` bindings + a router:
+**B. Path mode (implemented):** single Worker with a Workers Static Assets
+binding + Hono router:
 
 ```
 /         → web      /app → workspace   /account → account
@@ -122,6 +123,23 @@ CORS allowlist = the five app origins.
 
 Cookies host-only (`__Host-` prefix), `VITE_API_BASE_URL=/api`.
 Mode is selected by config only — see `docs/DNS_AND_ROUTING.md`.
+
+How the pieces fit together:
+
+- Each SPA builds with a Vite `base` matching its mount prefix
+  (`packages/build/src/react.ts`, `basePath` per app's `vite.config.ts`; dev
+  servers keep serving at `/` on their own ports).
+- `scripts/assemble-assets.mjs` (run automatically by the root `build` script
+  after the workspace builds) merges the five `dist/` trees into
+  `apps/api/assets/` — git-ignored except for a `.gitkeep` placeholder.
+- `wrangler.jsonc` declares `assets` with `binding: "ASSETS"` and
+  `run_worker_first: true`, so every request reaches Hono. API routes answer
+  first; the catch-all in `src/middleware/static-assets.ts` serves exact asset
+  paths and falls back to the owning SPA's directory index for client-side
+  deep links (`/app/conversations/123` → `/app/` index).
+- API-only security headers (notably the `default-src 'none'` CSP) are scoped
+  to `/api/*` so HTML/JS responses keep the asset worker's own headers.
+- API discovery metadata lives at `GET /api`; root `/` is the web SPA.
 
 ## 8. Deploy
 

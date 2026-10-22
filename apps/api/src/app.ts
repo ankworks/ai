@@ -5,6 +5,7 @@ import { getAuth } from './auth';
 import { errorResponse, securityMiddleware } from './middleware/security';
 import { csrfMiddleware } from './middleware/csrf';
 import { rateLimitMiddleware } from './middleware/rate-limit';
+import { rejectNonAssetMethod, serveStaticAssets } from './middleware/static-assets';
 import { registerHealthRoutes } from './routes/health';
 import { registerStatusRoutes } from './routes/status';
 import { registerAccountRoutes } from './routes/me';
@@ -26,7 +27,8 @@ export function createApp(): Hono<AppEnv> {
   app.use('*', csrfMiddleware);
   app.use('*', rateLimitMiddleware);
 
-  app.get('/', (c) =>
+  // API discovery metadata. Root `/` serves the web SPA (static assets catch-all).
+  app.get('/api', (c) =>
     c.json({
       name: 'ConAI API',
       version: c.env.APP_VERSION,
@@ -61,14 +63,10 @@ export function createApp(): Hono<AppEnv> {
   registerFileRoutes(app);
   registerTeamRoutes(app);
 
-  app.notFound((c) =>
-    errorResponse(
-      'not_found',
-      `No route for ${c.req.method} ${new URL(c.req.url).pathname}`,
-      404,
-      c.get('requestId'),
-    ),
-  );
+  // Static assets (path mode): unmatched GET/HEAD serves the assembled SPAs
+  // with per-prefix index.html fallback; other methods get a JSON 404.
+  app.on(['GET', 'HEAD'], '*', serveStaticAssets);
+  app.all('*', rejectNonAssetMethod);
 
   app.onError((err, c) => {
     // Redacted structured log — never leak stack traces or secrets to clients.

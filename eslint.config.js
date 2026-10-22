@@ -12,6 +12,8 @@ export default tseslint.config(
       '**/coverage/**',
       '**/*.d.ts',
       '**/worker-configuration.d.ts',
+      // Generated SPA asset tree (scripts/assemble-assets.mjs)
+      'apps/api/assets/**',
     ],
   },
   js.configs.recommended,

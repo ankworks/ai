@@ -55,6 +55,8 @@ export type EnvValues = z.infer<typeof envSchema>;
 export interface Env extends EnvValues {
   DB?: D1Database;
   CACHE?: KVNamespace;
+  /** Workers Static Assets binding (see `assets` in wrangler.jsonc). */
+  ASSETS?: Fetcher;
 }
 
 export function parseEnv(raw: Partial<Record<string, string>>): Env {
