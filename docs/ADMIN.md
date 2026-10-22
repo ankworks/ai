@@ -5,16 +5,16 @@ required — every operational step below is a Cloudflare dashboard or browser a
 
 ## 1. What was built
 
-| Piece | Detail |
-| --- | --- |
-| Separate auth instance | Admin sessions live under `/api/admin-auth/*` with cookie prefix `conai_admin`. A normal user cookie (`conai.session_token`) can never reach an admin route — the API returns `admin_session_required` (401). |
-| No self-serve sign-up | The admin instance has sign-up disabled. Admin accounts exist only via the Owner bootstrap or a grant from another authorized admin. |
-| Mandatory TOTP MFA | Every admin must enroll an authenticator app (RFC 6238, 6 digits, 30 s) and receives 10 one-time backup codes. Pre-MFA, every admin API route except `/me` returns `mfa_required` (403). |
-| Six roles | `owner`, `administrator`, `moderator`, `student_reviewer`, `ai_manager`, `support_agent` — permission matrix in `packages/permissions/src/admin.ts` (23 `admin.*` permissions), enforced server-side on every request. |
-| Owner bootstrap | Emails listed in `ADMIN_OWNER_EMAILS` self-provision the Owner role on first admin sign-in. The event is written to the audit log as `admin.bootstrap`. |
-| Audit log | Every admin mutation appends an immutable row to `admin_audit_log` (actor, action, target, JSON metadata, IP, timestamp). |
-| User lock/unlock | Locking sets `user.banned = 1`, which blocks all **new** sessions on both the user and admin auth instances. Existing cookies stop working on their next request. |
-| Live modules (5/16) | Dashboard, Users, Admins, Audit log, Platform settings. The other 11 modules show an honest "not implemented" placeholder. |
+| Piece                  | Detail                                                                                                                                                                                                                 |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Separate auth instance | Admin sessions live under `/api/admin-auth/*` with cookie prefix `conai_admin`. A normal user cookie (`conai.session_token`) can never reach an admin route — the API returns `admin_session_required` (401).          |
+| No self-serve sign-up  | The admin instance has sign-up disabled. Admin accounts exist only via the Owner bootstrap or a grant from another authorized admin.                                                                                   |
+| Mandatory TOTP MFA     | Every admin must enroll an authenticator app (RFC 6238, 6 digits, 30 s) and receives 10 one-time backup codes. Pre-MFA, every admin API route except `/me` returns `mfa_required` (403).                               |
+| Six roles              | `owner`, `administrator`, `moderator`, `student_reviewer`, `ai_manager`, `support_agent` — permission matrix in `packages/permissions/src/admin.ts` (23 `admin.*` permissions), enforced server-side on every request. |
+| Owner bootstrap        | Emails listed in `ADMIN_OWNER_EMAILS` self-provision the Owner role on first admin sign-in. The event is written to the audit log as `admin.bootstrap`.                                                                |
+| Audit log              | Every admin mutation appends an immutable row to `admin_audit_log` (actor, action, target, JSON metadata, IP, timestamp).                                                                                              |
+| User lock/unlock       | Locking sets `user.banned = 1`, which blocks all **new** sessions on both the user and admin auth instances. Existing cookies stop working on their next request.                                                      |
+| Live modules (5/16)    | Dashboard, Users, Admins, Audit log, Platform settings. The other 11 modules show an honest "not implemented" placeholder.                                                                                             |
 
 ## 2. One-time setup (dashboard only)
 
@@ -61,13 +61,13 @@ The Owner email must belong to an existing, **verified** ConAI user:
 
 ## 3. Daily operations
 
-| Task | Where | Required permission |
-| --- | --- | --- |
-| Search/inspect users, lock or unlock an account | `/admin/` → Users | `admin.users.view` / `.manage` |
-| Grant/revoke admin roles (Owner-only for Owner grants) | `/admin/` → Admins | `admin.roles.manage` (+ `admin.grant_owner` for Owners) |
-| Review the immutable audit trail | `/admin/` → Audit log | `admin.audit.view` |
-| Edit allowlisted platform settings | `/admin/` → Settings | `admin.settings.manage` |
-| Platform counts | `/admin/` → Dashboard | `admin.dashboard.view` |
+| Task                                                   | Where                 | Required permission                                     |
+| ------------------------------------------------------ | --------------------- | ------------------------------------------------------- |
+| Search/inspect users, lock or unlock an account        | `/admin/` → Users     | `admin.users.view` / `.manage`                          |
+| Grant/revoke admin roles (Owner-only for Owner grants) | `/admin/` → Admins    | `admin.roles.manage` (+ `admin.grant_owner` for Owners) |
+| Review the immutable audit trail                       | `/admin/` → Audit log | `admin.audit.view`                                      |
+| Edit allowlisted platform settings                     | `/admin/` → Settings  | `admin.settings.manage`                                 |
+| Platform counts                                        | `/admin/` → Dashboard | `admin.dashboard.view`                                  |
 
 Rules enforced by the API (not just the UI):
 
@@ -81,17 +81,17 @@ Rules enforced by the API (not just the UI):
 
 ### Admin REST routes (`/api/admin/*`, `conai_admin` cookie + MFA required)
 
-| Method & path | Purpose |
-| --- | --- |
-| `GET /me` | Current admin, role, effective permissions, MFA state |
-| `POST /me/confirm-mfa` | Mark TOTP enrolled after the verify step |
-| `GET /dashboard` | Platform counts |
-| `GET /users?q=&limit=&offset=` · `GET /users/:id` | User search/detail |
-| `POST /users/:id/lock` · `POST /users/:id/unlock` | Ban / unban |
-| `GET /admins` · `POST /admins` · `DELETE /admins/:userId` | Roster management |
-| `GET /audit?action=&limit=&offset=` | Audit query |
-| `GET /settings` · `PUT /settings` | Allowlisted platform settings |
-| `GET /csrf` | Double-submit token mint for the admin SPA |
+| Method & path                                             | Purpose                                               |
+| --------------------------------------------------------- | ----------------------------------------------------- |
+| `GET /me`                                                 | Current admin, role, effective permissions, MFA state |
+| `POST /me/confirm-mfa`                                    | Mark TOTP enrolled after the verify step              |
+| `GET /dashboard`                                          | Platform counts                                       |
+| `GET /users?q=&limit=&offset=` · `GET /users/:id`         | User search/detail                                    |
+| `POST /users/:id/lock` · `POST /users/:id/unlock`         | Ban / unban                                           |
+| `GET /admins` · `POST /admins` · `DELETE /admins/:userId` | Roster management                                     |
+| `GET /audit?action=&limit=&offset=`                       | Audit query                                           |
+| `GET /settings` · `PUT /settings`                         | Allowlisted platform settings                         |
+| `GET /csrf`                                               | Double-submit token mint for the admin SPA            |
 
 ### Admin auth endpoints (`/api/admin-auth/*`, better-auth)
 
@@ -100,15 +100,15 @@ Rules enforced by the API (not just the UI):
 
 ### Error codes
 
-| Code | Meaning |
-| --- | --- |
-| `admin_session_required` (401) | No valid admin-plane cookie |
-| `admin_access_required` (403) | User is not in `admin_members` (and not a bootstrap Owner) |
-| `admin_locked` (403) | Roster row is locked, or sign-in gate refused a locked admin |
-| `mfa_required` (403) | TOTP enrollment required before using admin routes |
-| `forbidden` (403) | Authenticated admin lacks the needed `admin.*` permission |
-| `csrf_failed` (403) | Missing/mismatched double-submit token on a mutation |
-| `last_owner` (409) / `self_lock`, `self_revoke` (400) | Safety guards |
+| Code                                                  | Meaning                                                      |
+| ----------------------------------------------------- | ------------------------------------------------------------ |
+| `admin_session_required` (401)                        | No valid admin-plane cookie                                  |
+| `admin_access_required` (403)                         | User is not in `admin_members` (and not a bootstrap Owner)   |
+| `admin_locked` (403)                                  | Roster row is locked, or sign-in gate refused a locked admin |
+| `mfa_required` (403)                                  | TOTP enrollment required before using admin routes           |
+| `forbidden` (403)                                     | Authenticated admin lacks the needed `admin.*` permission    |
+| `csrf_failed` (403)                                   | Missing/mismatched double-submit token on a mutation         |
+| `last_owner` (409) / `self_lock`, `self_revoke` (400) | Safety guards                                                |
 
 ## 5. Local development
 
