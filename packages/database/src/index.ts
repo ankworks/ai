@@ -86,6 +86,88 @@ export function effectiveDailyLimit(
   return plan?.daily_sparks ?? 0;
 }
 
+// ── Teams (Phase 5, migration 0005) ──────────────────────────────────
+
+export interface TeamRow {
+  id: string;
+  name: string;
+  slug: string;
+  owner_id: string;
+  modules: string; // JSON: moduleId -> 0/1
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TeamRoleRow {
+  id: string;
+  team_id: string;
+  name: string;
+  permissions: string; // JSON array of TEAM_PERMISSIONS
+  created_at: string;
+}
+
+export interface TeamMemberRow {
+  team_id: string;
+  user_id: string;
+  role: 'owner' | 'admin' | 'member' | 'viewer';
+  custom_role_id: string | null;
+  joined_at: string;
+}
+
+export interface TeamInviteRow {
+  id: string;
+  team_id: string;
+  invited_by: string;
+  email: string | null;
+  username: string | null;
+  token: string;
+  role: 'admin' | 'member' | 'viewer';
+  status: 'pending' | 'accepted' | 'revoked' | 'expired';
+  expires_at: string;
+  created_at: string;
+  accepted_at: string | null;
+  accepted_by: string | null;
+}
+
+export interface TeamActivityRow {
+  id: string;
+  team_id: string;
+  actor_id: string;
+  type: string;
+  meta: string; // JSON — no secrets
+  created_at: string;
+}
+
+/** Owner-toggled workspace modules (PRODUCT_SPEC §12). */
+export const TEAM_MODULES = [
+  'overview',
+  'projects',
+  'tasks',
+  'channels',
+  'documents',
+  'calendar',
+  'activity',
+  'members',
+  'automations',
+  'settings',
+] as const;
+export type TeamModuleId = (typeof TEAM_MODULES)[number];
+
+/** Team activity event types written by the API (30-day retention). */
+export const TEAM_ACTIVITY_TYPES = [
+  'team.created',
+  'team.updated',
+  'team.deleted',
+  'ownership.transferred',
+  'member.joined',
+  'member.removed',
+  'member.role_changed',
+  'invite.created',
+  'invite.accepted',
+  'invite.revoked',
+] as const;
+export type TeamActivityType = (typeof TEAM_ACTIVITY_TYPES)[number];
+
 /** Stable keys seeded in 0001 — referenced by API and admin code. */
 export const SETTING_KEYS = {
   sparksPricing: 'sparks.pricing',

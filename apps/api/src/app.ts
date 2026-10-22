@@ -13,6 +13,7 @@ import { registerConversationRoutes } from './routes/ai-conversations';
 import { registerMemoryRoutes } from './routes/memory';
 import { registerPromptRoutes } from './routes/prompts';
 import { registerFileRoutes } from './routes/files';
+import { registerTeamRoutes } from './routes/teams';
 
 /**
  * Builds the Hono app. The validated environment (zod) is supplied per request by
@@ -42,6 +43,7 @@ export function createApp(): Hono<AppEnv> {
         memory: '/api/v1/ai/memory',
         prompts: '/api/v1/ai/prompts',
         files: '/api/v1/files',
+        teams: '/api/v1/teams',
       },
     }),
   );
@@ -57,6 +59,7 @@ export function createApp(): Hono<AppEnv> {
   registerMemoryRoutes(app);
   registerPromptRoutes(app);
   registerFileRoutes(app);
+  registerTeamRoutes(app);
 
   app.notFound((c) =>
     errorResponse(

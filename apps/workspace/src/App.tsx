@@ -4,8 +4,8 @@ import { Home } from './pages/Home';
 import { Chat } from './pages/Chat';
 import { HistoryPage } from './pages/History';
 import { LibraryPage } from './pages/Library';
-import { PhasePage } from './pages/PhasePage';
 import { ToolsPage } from './pages/Tools';
+import { TeamsPage } from './pages/Teams';
 
 export default function App() {
   return (
@@ -22,7 +22,7 @@ export default function App() {
           <Route path="/tools" element={<ToolsPage />} />
           <Route path="/library" element={<LibraryPage />} />
           <Route path="/history" element={<HistoryPage />} />
-          <Route path="/teams" element={<PhasePage titleKey="ws.teams" phase={5} />} />
+          <Route path="/teams" element={<TeamsPage />} />
           <Route path="*" element={<Home />} />
         </Route>
       </Routes>
